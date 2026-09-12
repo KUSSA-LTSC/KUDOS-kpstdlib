@@ -1,0 +1,864 @@
+;旧版声明保留：
+
+; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
+; All rights reserved.
+;
+; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
+
+;KUSSA's standard library
+;源码可见，仅供免费教育研究和学习
+;注释以后再补充吧
+
+;新版声明：
+
+; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
+; All rights reserved.
+;
+; SPDX-License-Identifier: LicenseRef-KUDOS-Source-Available-2.5
+;
+; KUSSA's standard library
+; This is NOT an open source license. This is a source-available,
+; anti-commercial license.
+;
+; 本文件仅按 KUDOS SOURCE AVAILABLE LICENSE Version 2.5 授权。
+; 完整条款见项目根目录：
+; KUDOS SOURCE AVAILABLE LICENSE.txt
+;
+; 未经项目所有者事先纸质书面同意，禁止：
+; - 商业使用、营利实体使用、营利实体评估或测试；
+; - 将本软件或修改版分发、公开、上传、分享给任何第三方；
+; - 与商业相关捆绑包组合、链接或一起分发；
+; - 使用本软件训练、微调、蒸馏、评估任何 AI 或机器学习模型。
+;
+; 允许的用途仅限许可证明确规定的：
+; - 个人私人学习；
+; - 非营利组织对原始未修改软件的内部行政使用；
+; - 主流在线平台上的公开免费课程；
+; - 按第 1.4 条进行的非商业研究、同行评审和论文发表。
+;
+; 配置文件如不含源代码、脚本、二进制或可执行逻辑，可以公开共享。
+
+;代码往下
+
+bits    64
+default rel
+
+;虽然也是个教学用的性能没必要太好，但是还是想要追求完美一些
+;为了方便调试和写，寄存器非必要全用r64
+;标签都是瞎几把写的因为我英文不好
+
+global  bu
+; global  realseconds
+; global  realminutes
+; global  realhours
+; global  realdays
+; global  realmonth
+; global  realyears
+global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+
+datelen equ (date_end - date)
+
+section .data
+    ;数据先丢这里
+    bu:
+    times 22    db 0
+    date:
+    times 256   db 0 ;日期文本
+    date_end:    
+    days        dq 0 ;总天数
+    seconds     dq 0 ;总秒数
+    tempyears   dq 0 ;年数暂存
+    tempdays    dq 0 ;天数暂存
+    nboffhys    dq 0 ;400年的数量
+    nbofohys    dq 0 ;100年的数量
+    nboffoys    dq 0 ;4年的数量
+    nbofovys    dq 0 ;多出的年数
+    overdays    dq 0 ;多出的天数
+    realyears   dq 0 ;年份
+    realmonth   dq 0 ;月份
+    realdays    dq 0 ;天数
+    realhours   dq 0 ;小时
+    realminutes dq 0 ;分钟
+    realseconds dq 0 ;秒数
+    
+    ;年份常量，1600年
+    aoeg        equ 50491123200
+    ;北京时间时差
+    UTC8_OFFSET equ 28800
+    ;加上北京时间时差的年份常量
+    boeg        equ aoeg+UTC8_OFFSET
+    
+    ;月表
+    mthcom             db  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+    mthlep             db  31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+    ;时间常量
+    seconds_per_day    equ 86400
+    days_per_4_years   equ 1461
+    days_per_100_years equ 36524
+    days_per_400_years equ 146097
+
+section .text
+
+global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
+global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+
+kp_strlen_fastcall_win64:
+;只有一个参数，rcx放字符串起始，返回rax，单位字节    
+    xor  rax, rax
+    push rdi
+    mov  rdi, rcx
+    mov  rcx, -1
+    cld
+
+    repne scasb 
+    or  rcx, rcx
+    jz  .nofind
+    not rcx
+    dec rcx
+    mov rax, rcx
+    pop rdi
+    ret
+    ; jmp .ret
+
+.nofind:
+    xor rax, rax
+.ret:
+    pop rdi
+    ret
+
+kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
+;子程序，默认已经对齐，而且没有寄存器传递参数
+;目前还没做RAX传递参数的功能
+;rcx是0的话说明没有数字，直接退出
+    or   rcx, rcx ;.....[STACK].....
+    jz   .exit    ;NUM2       RBP+56
+    push rbp      ;NUM1       RBP+48
+    mov  rbp, rsp ;SHADOW 4
+    push rsi      ;SHADOW 3
+    push rcx      ;SHADOW 2
+    push rax      ;SHADOW 1
+    push rbx      ;RET        RBP+8
+    push rdx      ;RBP    0   RBP+0
+    push rdi
+;保存所有用到的
+    ;PREPROCE
+
+    xor rsi, rsi
+    xor rdi, rdi
+
+    
+
+;整体循环转化输出
+.lb_tltp:
+
+    mov rax, [rbp+rsi+48]
+;新增检查负数
+    ; test rax, 0x8000000000000000
+    ; jz   .np
+;改成更短的写法
+    or  rax, rax
+    jns .np
+;不是负数就跳过
+    mov byte [bu], 45 ;负数符号的ASCII
+    inc rdi
+;负数转正
+    neg rax
+.np:
+    mov  rbx, 10
+    push rcx
+    xor  rcx, rcx
+;除法循环
+.divlop:
+    inc  rcx      ;STACK
+    xor  rdx, rdx ;ori_rcx,rcx*rdx
+    div  rbx
+    push rdx
+    or   rax, rax
+    jz   .preprt
+
+    jmp .divlop
+;准备打印
+.preprt:
+
+    lea rbx, [bu]
+;打印循环（其实是写入内存）
+.lre:
+
+    pop rdx
+    add rdx,       48
+    mov [rbx+rdi], dl
+    inc rdi
+    dec rcx
+    jnz .lre
+
+;这里rdx会全部pop，rsp指向ori_rcx
+
+    inc rdi
+    mov byte [rbx+rdi], 0
+    ;末尾补上0
+
+;这里应该调用输出bu，但是还没做
+
+;初始化准备下一轮循环
+
+    xor rdi, rdi
+    add rsi, 8
+    pop rcx
+
+    dec rcx
+    jnz .lb_tltp
+
+    
+
+;rcx=0,rsp指向ori_rdi
+
+    pop rdi
+    pop rdx
+    pop rbx
+    pop rax
+    pop rcx
+    pop rsi
+    pop rbp
+
+;按理来讲应该留个AX放返回值，但是实际上我懒得
+
+.exit:
+    ret
+
+
+;待定议程，参数，比如RAX可以说明是否启用有符号，是否启用地址回写，如果启用，地址默认起始RBX，我也不知道64位有没有能够专门隔着写的文字命令，以前我记得可以直接设定方向，间隔，然后放文字就行
+
+;单独打印rax，给日志功能用，应该不会破坏任何寄存器
+kp_prtnum_frmrax:
+;默认rax已经赋值
+    push rdi
+    xor  rdi,       rdi
+    or   rax,       rax ;检查负数
+    jns  .np            ;不是负数就跳过
+    mov  byte [bu], 45  ;负数符号的ASCII
+    inc  rdi
+    neg  rax
+.np:
+    push rsi
+    push rcx
+    push rdx
+    push rbx
+    mov  rbx, 10
+    xor  rcx, rcx
+.divlop:
+    inc  rcx
+    xor  rdx, rdx
+    div  rbx
+    push rdx
+    or   rax, rax
+    jz   .preprt
+    jmp  .divlop
+.preprt:
+    lea rbx, [bu]
+    ;先打印到bu
+.lre:
+    pop rdx
+    add rdx,       48
+    mov [rbx+rdi], dl
+    inc rdi
+    dec rcx
+    jnz .lre
+
+    ; inc rdi
+    mov byte [rbx+rdi], 0
+
+    lea rax, [bu]
+    ;返回地址
+
+    pop rbx
+    pop rdx
+    pop rcx
+    pop rsi
+    pop rdi
+    ret
+
+;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
+
+;文本复制，带检查（实际没有用的检查）
+;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
+;返回末尾0指针，rdx为负数自动算
+kp_strcpy_fastcall_win64:
+    
+    or   rcx, rcx
+    jz   .mgd
+    or   r8,  r8
+    jz   .mgd
+    ;据说有空指针
+    or   rdx, rdx
+    jns  .busu
+    push rcx
+    call kp_strlen_fastcall_win64
+    mov  rdx, rax
+    pop  rcx
+.busu:    
+    cmp rdx, r9
+    jae .mgd
+    ;如果源比目标长就退出
+    ;不检查rcx是不是0了因为0也没事
+    ; push rbp
+    ; mov  rbp, rsp
+    ; 用不上了现在
+
+    cld
+
+    push rsi
+    push rdi
+    ; mov  r9,  r8
+    mov  rsi, rcx
+    mov  rdi, r8
+    cmp  rdx, 15
+    ja   .msq
+    mov  rcx, rdx
+    rep movsb
+
+    mov byte [rdi], 0
+
+    jmp .normal
+
+.msq:
+    mov rcx, rdx
+    shr rcx, 3
+    rep movsq
+    mov rcx, rdx
+    and rcx, 7
+    rep movsb
+
+    mov byte [rdi], 0
+
+    ; jmp .normal
+    
+.normal:
+    ; sub rdi, r8
+    ; mov rax, rdi
+    mov rax, rdi
+    ;返回指针
+    pop rdi
+    pop rsi
+    ret
+    ; jmp .exit
+.mgd:
+    xor rax, rax
+.exit:
+    ; mov rsp, rbp
+    ; pop rbp
+    ret
+
+db '少羽牛逼'
+
+;输入rcx，可以用系统提供时间GetSystemTimeAsFileTime
+;传入参数：rcx放时间由系统提供，1个地址用来返回纯文本的紧凑时间
+;例如：20260905220631_134330908XXXXXXXXX\0
+;剩下6个地址分别是年月日时分秒的内存指针
+;void(imm64,immmem64ptr,mem64addr*6)
+kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
+;最大工程的函数我只能说
+
+; ...STACK_TABLE...
+; P8秒    RBP+72
+; P7分    RBP+64
+; P6时    RBP+56
+; P5日    RBP+48
+; S4      R9
+; S3      R8
+; S2      RDX
+; S1      RCX
+; RET     RBP+8
+; RBP     RBP
+; RBX
+; RSI
+; RDI
+
+    push rbp
+    mov  rbp, rsp
+    push rbx
+    push rsi
+    push rdi
+    push r15
+
+    ; xor rsi, rsi
+    ; mov rdi, 7
+    ;展开就用不上这两行
+
+;检查空指针，虽然说展开性能更好，好吧那就展开吧
+    or  rdx, rdx
+    jz  .nulptr
+    or  r8,  r8
+    jz  .nulptr
+    or  r9,  r9
+    jz  .nulptr
+    mov rax, [rbp+48]
+    or  rax, rax
+    jz  .nulptr
+    mov rax, [rbp+56]
+    or  rax, rax
+    jz  .nulptr
+    mov rax, [rbp+64]
+    or  rax, rax
+    jz  .nulptr
+    mov rax, [rbp+72]
+    or  rax, rax
+    jz  .nulptr
+
+
+
+    mov [rbp+16], rcx
+    mov [rbp+24], rdx
+    mov [rbp+32], r8
+    mov [rbp+40], r9
+    ;已经保存了所有参数
+    mov rax,      rcx
+
+    xor rbx, rbx ;这行干嘛用的我也忘了
+    
+    ;先换成秒
+    mov rcx, 10000000
+    xor rdx, rdx
+    div rcx
+    mov rcx, boeg
+    add rax, rcx
+    xor rdx, rdx
+    ;现在rax就是总秒数
+    mov rcx, seconds_per_day
+    div rcx
+    
+    ;rax=天数，rdx=剩余秒数
+    mov [days],      rax
+    mov [seconds],   rdx
+    mov rcx,         days_per_400_years
+    xor rdx,         rdx
+    div rcx
+    mov [nboffhys],  rax
+    mov rax,         rdx                ;继续除以100年
+    mov rcx,         days_per_100_years
+    xor rdx,         rdx
+    div rcx
+    mov [nbofohys],  rax
+    mov rax,         rdx
+    mov rcx,         days_per_4_years
+    xor rdx,         rdx
+    div rcx
+    mov [nboffoys],  rax
+    mov [tempdays],  rdx
+    ;剩下的天数
+    ;现在先算有没有世纪平年
+    mov rax,         [nboffhys]
+    imul rax,rax,400
+    mov [tempyears], rax
+    mov rax,         [nbofohys]
+    imul rax,rax,100
+    add [tempyears], rax
+    mov rax,         [nboffoys]
+    imul rax,rax,4
+    add [tempyears], rax
+    ;现在所有除了不到4年的部分已经算完了
+
+;先比较闰年必要
+    mov rax, [tempdays]
+    cmp rax, 1460
+    je  .skipdivy
+    ;这个标号在后面
+    mov rcx, 365
+    xor rdx, rdx
+    div rcx
+
+;1460天直接传送门走这里    
+.skipdivn:    
+    
+    ;保存剩余年数和天数
+    mov [nbofovys],  rax
+    mov [overdays],  rdx
+    mov r9,          rax
+    inc rax
+    add rax,         [tempyears]
+    mov [realyears], rax
+    mov rax,         r9
+
+    cmp rax, 3
+    jne .normalyr
+    ;剩下就要考虑闰年
+    mov rax, [tempyears]
+    mov r9,  rax
+    ;先复制一份rax，r9就是rax的原来tempyears
+    mov rcx, 100
+    xor rdx, rdx
+    div rcx
+    mov r8,  rax
+    ;保存第一次结果
+    mov rax, r9
+    add rax, 4
+    xor rdx, rdx
+    div rcx
+    cmp rax, r8
+    ;与第一次结果比较
+    je  .leapyear
+    ;不相等说明有世纪年
+    ;现在检查有没有400年闰年
+    mov rcx, 400
+    xor rdx, rdx
+    mov rax, r9
+    div rcx
+    mov r8,  rax
+    ;保存第一次结果
+    xor rdx, rdx
+    mov rax, r9
+    add rax, 4
+    div rcx
+    cmp rax, r8
+    ;比较，相等说明不是400年，而是世纪平年
+    je  .normalyr
+
+.leapyear:
+    lea rbx, [mthlep]
+    jmp .lepsub
+.normalyr:
+    lea rbx, [mthcom]
+
+;代码复用这一块
+;算月份的减法
+;这个期待rax等于多出来的天数，已经下面初始化有
+
+.lepsub:
+    mov rax, [overdays]
+    xor rcx, rcx
+    xor rsi, rsi
+
+.leplop:
+    inc   rcx
+    ;真的还有人记得rsi已经清零了吗（在开头）
+    ;好了现在改成提前清零
+    movzx rdx, byte [rbx+rsi]
+    inc   rsi
+    cmp   rax, rdx
+    ; jge   .lepsub
+    jb    .edlepsub
+    sub   rax, rdx
+    jmp   .leplop
+
+.edlepsub:    
+    ;rax=剩余天数，rcx等于月份
+    inc rax
+    ;这里是没过完的一天
+    mov [realdays],  rax
+    mov [realmonth], rcx
+
+;至此年月日已经算完了，接下来是时分秒  
+    mov rax, [seconds]
+    xor rdx, rdx
+    mov rcx, 3600
+    div rcx
+
+    mov [realhours], rax
+    
+    ;现在rdx的剩余秒数给到rax
+    xchg rax, rdx
+    xor  rdx, rdx
+    mov  rcx, 60
+    div  rcx
+
+    mov [realminutes], rax
+    mov [realseconds], rdx
+
+;现在输出返回值
+
+    lea rbx, [date]
+
+    ;rbx已经做好输出准备
+    
+    mov rax, rbx
+    mov r9,  datelen
+    xor rsi, rsi
+    mov rdi, 6
+    lea r15, [realyears]
+.reprtlop:
+    lea  rcx, [bu]
+    mov  rdx, -1
+    mov  r8,  rax
+    sub  rax, rbx
+    mov  r9,  datelen
+    sub  r9,  rax
+    ;计算剩余长度并且放入r9
+    mov  rax, [r15+rsi]
+    call kp_prtnum_frmrax_intime
+    call kp_strcpy_enddls_fastcall_win64
+    ;这个函数返回rax是末尾地址
+    add  rsi, 8
+    dec  rdi
+    jnz  .reprtlop
+    ;8086时代还是习惯循环来压缩代码，不过现在理论上可以展开性能更好
+
+;现在时间已经拼接完成
+
+    lea rcx, [bu]
+    mov rdx, -1
+    mov r8,  rax
+    sub rax, rbx
+    mov r9,  datelen
+    sub r9,  rax
+    ;计算剩余长度并且放入r9
+
+    mov  al,   ('_')
+    mov  ah,   0
+    mov  [bu], ax
+    call kp_strcpy_fastcall_win64
+    lea  rcx,  [bu]
+    mov  rdx,  -1
+    mov  r8,   rax
+    sub  rax,  rbx
+    mov  r9,   datelen
+    sub  r9,   rax
+    ;计算剩余长度并且放入r9
+    mov  rax,  [rbp+16]
+    call kp_prtnum_frmrax
+    call kp_strcpy_fastcall_win64
+    
+
+
+
+    mov rcx,   [rbp+24]
+    lea rdx,   [date]
+    mov [rcx], rdx
+    ;已经回写文本日期
+
+    xor rsi, rsi
+    mov rdi, 6
+
+.reback:
+
+    mov rcx,   [rbp+rsi+32]
+    mov rdx,   [r15+rsi]
+    mov [rcx], rdx
+    add rsi,   8
+    dec rdi
+    jnz .reback
+
+;返回过程
+
+;空指针返回
+.nulptr:
+
+    pop r15
+    pop rdi
+    pop rsi
+    pop rbx
+    pop rbp
+
+    ret
+
+;1460天特殊处理标号
+.skipdivy:
+    mov rax, 3
+    mov rdx, 365
+    jmp .skipdivn
+db 'This_is_a_sentence.'
+;我去终于写完了这玩意，用了我三个星期    
+;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
+;这玩意折磨我三个星期
+
+;文本复制，带检查（实际没有用的检查）
+;和strcpy唯一不同的就是
+;结尾是'$\0'
+;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
+;返回末尾0指针，rdx为负数自动算
+kp_strcpy_enddls_fastcall_win64:
+    
+    or   rcx, rcx
+    jz   .mgd
+    or   r8,  r8
+    jz   .mgd
+    ;据说有空指针
+    or   rdx, rdx
+    jns  .busu
+    push rcx
+    call kp_strlen_fastcall_win64
+    mov  rdx, rax
+    pop  rcx
+.busu:    
+    cmp rdx, r9
+    jae .mgd
+    ;如果源比目标长就退出
+    ;不检查rcx是不是0了因为0也没事
+    ; push rbp
+    ; mov  rbp, rsp
+    ; 用不上了现在
+
+    cld
+
+    push rsi
+    push rdi
+    ; mov  r9,  r8
+    mov  rsi, rcx
+    mov  rdi, r8
+    cmp  rdx, 15
+    ja   .msq
+    mov  rcx, rdx
+    rep movsb
+
+    ; mov byte [rdi], 0
+    mov ah,    0
+    mov al,    ('$')
+    mov [rdi], ax
+    inc rdi
+
+    jmp .normal
+
+.msq:
+    mov rcx, rdx
+    shr rcx, 3
+    rep movsq
+    mov rcx, rdx
+    and rcx, 7
+    rep movsb
+
+    ; mov byte [rdi], 0
+    mov ah,    0
+    mov al,    ('$')
+    mov [rdi], ax
+    inc rdi
+
+    ; jmp .normal
+    
+.normal:
+    ; sub rdi, r8
+    ; mov rax, rdi
+    mov rax, rdi
+    ;返回指针
+    pop rdi
+    pop rsi
+    ret
+    ; jmp .exit
+.mgd:
+    xor rax, rax
+.exit:
+    ; mov rsp, rbp
+    ; pop rbp
+    ret
+
+;内部函数，仅限日期功能用    
+kp_prtnum_frmrax_intime:
+;默认rax已经赋值
+    push rdi
+    xor  rdi,       rdi
+    or   rax,       rax ;检查负数
+    jns  .np            ;不是负数就跳过
+    mov  byte [bu], 45  ;负数符号的ASCII
+    inc  rdi
+    neg  rax
+.np:
+    push rsi
+    push rcx
+    push rdx
+    push rbx
+    push rbp
+    mov  rbp, rsp
+    mov  rbx, 10
+    xor  rcx, rcx
+.divlop:
+    inc  rcx
+    xor  rdx, rdx
+    div  rbx
+    push rdx
+    or   rax, rax
+    jz   .preprt
+    jmp  .divlop
+.preprt:
+    lea rbx, [bu]
+    ;先打印到bu
+.lre:
+    pop rdx
+    add rdx,       48
+    mov [rbx+rdi], dl
+    inc rdi
+    dec rcx
+    jnz .lre
+
+    ; inc rdi
+    mov byte [rbx+rdi], 0
+
+;数据处理，给日期函数用来对齐
+;如果rsi不等于0就保留2位
+    mov  rsi,   [rbp+32]
+    or   rsi,   rsi
+    jz   .sk
+    mov  ax,    [rbx]
+    or   ah,    ah
+    jnz  .sk
+    xchg ah,    al
+    mov  al,    ('0')
+    mov  [rbx], ax
+    xor  rax,   rax
+
+    mov [rbx+2], al
+    ;结尾补0
+
+.sk:
+
+    lea rax, [bu]
+    ;返回地址
+
+    pop rbp
+    pop rbx
+    pop rdx
+    pop rcx
+    pop rsi
+    pop rdi
+    ret
+
+    
+
+section .kpstdlib
+ksignlabel:
+;KUSSA(KUSSA_LTSC)
+    jmp ksignlabel
+    db 'KUSSA_LTSC'
+
+;来自另一个项目的内容：
+
+    ;“我们做了个艰难的决定”：
+
+        ;自从2026年9月6日起，这个教学demo不再遵循GPL协议，改用KUDOS
+        ;原来已经用GPL协议发布的版本不受影响
+        ;因为要使用闭源库或者是源码可见的库，不符合GPL要求
+
+    ;2026年9月6日
+
+;你必须要知道的：
+
+    ;用的不是开源许可证，只是源码可见
+    ;如果你是学生并且进行与工作无关的学习汇编出于爱好的话可以随便研究学习
+    ;这个代码是免费的，不要拿去卖钱
+    ;如果你付费获得的话，说明你被骗了一点点钱
+    ;免费链接：https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
+
+;2026年9月11日
+
+; 你必须要知道的：
+;
+; 用的不是开源许可证，只是源码可见。
+; 这不是 OSI 开源许可证。
+;
+; 这个代码是免费的，不要拿去卖钱。
+; 如果你付费获得的话，说明你被骗了。
+; 免费链接：https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
+;
+; 个人可以出于爱好、私人、非商业目的学习汇编。
+; 学生可以学习，但仅限个人私人学习，或符合许可证定义的
+; “允许的教育用途”：主流在线平台公开免费课程。
+;
+; 禁止把源代码、修改版、二进制文件分享给朋友、同学、同事、
+; 学生、其他部门、子公司或任何第三方。
+; 研究合作、同行评审、论文发表按许可证第 1.4 条执行。
+;
+; 配置文件可以公开，但不能包含源代码、脚本、二进制、
+; 可执行逻辑或任何能重构软件的材料。
+;
+; 商业使用、营利实体使用、评估、测试、捆绑、AI 训练，
+; 全部需要项目所有者事先纸质书面同意。
+;
+; 2026年9月12日
+
+;到底了，就这么多~
