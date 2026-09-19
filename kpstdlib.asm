@@ -1,3 +1,7 @@
+;kpstdlib.asm
+
+;KUSSA_LTSC 2026 保留所有权利
+
 ;旧版声明保留：
 
 ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
@@ -8,6 +12,11 @@
 ;KUSSA's standard library
 ;源码可见，仅供免费教育研究和学习
 ;注释以后再补充吧
+
+;bash:
+
+;nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj 
+;gcc -o test.exe test.c kpstdlib.obj -nostdlib -lkernel32 -luser32 -mwindows -e main -ffreestanding -fno-stack-protector -fno-asynchronous-unwind-tables -O2
 
 ;新版声明：
 
@@ -40,8 +49,28 @@
 
 ;代码往下
 
+%include 'third.inc'
+
+;宏展开放这里了别再问我啦！
+;就是开头的宏文件里面的，我自己写的
+;看到这两行不用纠结，看不懂没关系
+;默认栈对齐16自己就行
+
+; %macro adod 0
+;     push rbp
+;     mov rbp , rsp
+;     and rsp , -16
+; %endmacro
+
+; %macro pdod 0
+;     mov rsp,rbp
+;     pop rbp
+; %endmacro    
+
 bits    64
 default rel
+
+;立项日期无从考究，但是可以确定在2026年8月28日及以前
 
 ;虽然也是个教学用的性能没必要太好，但是还是想要追求完美一些
 ;为了方便调试和写，寄存器非必要全用r64
@@ -54,17 +83,32 @@ global  bu
 ; global  realdays
 ; global  realmonth
 ; global  realyears
+global  dlsbur
+; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
 global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+global  kp_ezutf8t16le_fastcall_win64
+global  kp_strcpy_fastcall_win64
+global  kp_strcpy_enddls_fastcall_win64
+global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
+global  kp_strend_fastcall_win64
+global  kp_strled_fastcall_win64
+global  kp_strlen_fastcall_win64
+global  kp_timefmt_fastcall_win64
 
-datelen equ (date_end - date)
+extern  MultiByteToWideChar
 
 section .data
     ;数据先丢这里
     bu:
-    times 22    db 0
+    times 22  db 0
     date:
-    times 256   db 0 ;日期文本
-    date_end:    
+    times 256 db 0 ;日期文本
+    date_end:  
+    
+    datelen equ (date_end - date)
+    
+    wasteimm dq 0
+
     days        dq 0 ;总天数
     seconds     dq 0 ;总秒数
     tempyears   dq 0 ;年数暂存
@@ -85,9 +129,14 @@ section .data
     aoeg        equ 50491123200
     ;北京时间时差
     UTC8_OFFSET equ 28800
+   ;禁用北京时间的filetime减法数
+    unboeg equ UTC8_OFFSET*10000000
     ;加上北京时间时差的年份常量
-    boeg        equ aoeg+UTC8_OFFSET
+    boeg   equ aoeg+UTC8_OFFSET
     
+    ;占位垃圾
+    dust times 128 db 0
+
     ;月表
     mthcom             db  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
     mthlep             db  31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
@@ -96,11 +145,14 @@ section .data
     days_per_4_years   equ 1461
     days_per_100_years equ 36524
     days_per_400_years equ 146097
+    ;新增$替换缓冲区
+    dlsbur:
+        times 64 db 0
+    dlsbur_end:
+    
+    dlsbur_len equ (dlsbur_end-dlsbur)
 
 section .text
-
-global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
-global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
 
 kp_strlen_fastcall_win64:
 ;只有一个参数，rcx放字符串起始，返回rax，单位字节    
@@ -126,6 +178,7 @@ kp_strlen_fastcall_win64:
     pop rdi
     ret
 
+;！警告：未完成函数，千万不要使用！
 kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 ;子程序，默认已经对齐，而且没有寄存器传递参数
 ;目前还没做RAX传递参数的功能
@@ -193,7 +246,7 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 
 ;这里rdx会全部pop，rsp指向ori_rcx
 
-    inc rdi
+    ; inc rdi
     mov byte [rbx+rdi], 0
     ;末尾补上0
 
@@ -284,18 +337,23 @@ kp_prtnum_frmrax:
 ;返回末尾0指针，rdx为负数自动算
 kp_strcpy_fastcall_win64:
     
-    or   rcx, rcx
-    jz   .mgd
-    or   r8,  r8
-    jz   .mgd
+    or rcx, rcx
+    jz .mgd
+    or r8,  r8
+    jz .mgd
+
     ;据说有空指针
     or   rdx, rdx
     jns  .busu
     push rcx
+
     call kp_strlen_fastcall_win64
     mov  rdx, rax
-    pop  rcx
-.busu:    
+
+    pop rcx
+
+.busu:
+
     cmp rdx, r9
     jae .mgd
     ;如果源比目标长就退出
@@ -446,14 +504,11 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov [tempdays],  rdx
     ;剩下的天数
     ;现在先算有没有世纪平年
-    mov rax,         [nboffhys]
-    imul rax,rax,400
+    imul rax,[nboffhys],400
     mov [tempyears], rax
-    mov rax,         [nbofohys]
-    imul rax,rax,100
+    imul rax,[nbofohys],100
     add [tempyears], rax
-    mov rax,         [nboffoys]
-    imul rax,rax,4
+    imul rax,[nboffoys],4
     add [tempyears], rax
     ;现在所有除了不到4年的部分已经算完了
 
@@ -476,47 +531,58 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     inc rax
     add rax,         [tempyears]
     mov [realyears], rax
-    mov rax,         r9
+    ; mov rax,         r9
 
-    cmp rax, 3
-    jne .normalyr
+    ; 被AI气死了给AI写的注释
+    ; tempyears = 绝对年份-1 - ((绝对年份-1) mod 4)
+    ; = 当前4年周期起点 - 1（不是绝对年份！）
+    ; 例：2000 -> 1996，2001 -> 2000，1900 -> 1896
+    ; 用途：拿 tempyears 和 tempyears+4 比 /100、/400
+    ;   相等 -> 没跨界；不等 -> 跨界，继续查 400
+    ; 绝对年份 = tempyears + 1 + nbofovys（当前周期内已过完整年数）
+
+    lea rbx, [mthlep]
+    lea rcx, [mthcom]
+
+    ; cmp    rax, 3
+    cmp    r9,  3
+    cmovne rbx, rcx
+    jne    .lepsub
+
     ;剩下就要考虑闰年
-    mov rax, [tempyears]
-    mov r9,  rax
+    mov   rax, [tempyears]
+    mov   r9,  rax
     ;先复制一份rax，r9就是rax的原来tempyears
-    mov rcx, 100
-    xor rdx, rdx
-    div rcx
-    mov r8,  rax
+    mov   rcx, 100
+    xor   rdx, rdx
+    div   rcx
+    mov   r8,  rax
     ;保存第一次结果
-    mov rax, r9
-    add rax, 4
-    xor rdx, rdx
-    div rcx
-    cmp rax, r8
+    mov   rax, r9
+    add   rax, 4
+    xor   rdx, rdx
+    div   rcx
+    cmp   rax, r8
     ;与第一次结果比较
-    je  .leapyear
+    ;这里还是闰年表
+    je    .lepsub
     ;不相等说明有世纪年
     ;现在检查有没有400年闰年
-    mov rcx, 400
-    xor rdx, rdx
-    mov rax, r9
-    div rcx
-    mov r8,  rax
+    mov   rcx, 400
+    xor   rdx, rdx
+    mov   rax, r9
+    div   rcx
+    mov   r8,  rax
     ;保存第一次结果
-    xor rdx, rdx
-    mov rax, r9
-    add rax, 4
-    div rcx
-    cmp rax, r8
+    xor   rdx, rdx
+    mov   rax, r9
+    add   rax, 4
+    div   rcx
+    cmp   rax, r8
     ;比较，相等说明不是400年，而是世纪平年
-    je  .normalyr
-
-.leapyear:
-    lea rbx, [mthlep]
-    jmp .lepsub
-.normalyr:
-    lea rbx, [mthcom]
+    lea   rbx, [mthlep]
+    lea   rcx, [mthcom]
+    cmove rbx, rcx
 
 ;代码复用这一块
 ;算月份的减法
@@ -601,7 +667,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     sub r9,  rax
     ;计算剩余长度并且放入r9
 
-    mov  al,   ('_')
+    mov  al,   ('{')
     mov  ah,   0
     mov  [bu], ax
     call kp_strcpy_fastcall_win64
@@ -613,11 +679,29 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     sub  r9,   rax
     ;计算剩余长度并且放入r9
     mov  rax,  [rbp+16]
+    ;现在rax就是filetime
     call kp_prtnum_frmrax
-    call kp_strcpy_fastcall_win64
+    call kp_strcpy_enddls_fastcall_win64
     
+;新增的改写$
+    mov rcx, 0x007D3B3A3A5F2D2D
+    ;等于('--_::;}',0)
+    ;小端序要倒过来写
+    ;小更新，现在有了}的结尾
 
+    mov [dlsbur], rcx
 
+;r9长度要自己给
+    lea  rcx, [date]
+    call kp_strlen_fastcall_win64
+    mov  r9,  rax
+
+    lea rcx, [dlsbur]
+    mov rdx, -1
+    lea r8,  [date]
+
+    call kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
+    ;我觉得应该不会失败，也没啥好检查的
 
     mov rcx,   [rbp+24]
     lea rdx,   [date]
@@ -655,9 +739,9 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov rdx, 365
     jmp .skipdivn
 db 'This_is_a_sentence.'
-;我去终于写完了这玩意，用了我三个星期    
+;我去终于写完了这玩意，日期函数用了我三个星期    
 ;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
-;这玩意折磨我三个星期
+;这玩意折磨我三个星期（结束于2026年9月13日）
 
 ;文本复制，带检查（实际没有用的检查）
 ;和strcpy唯一不同的就是
@@ -738,6 +822,71 @@ kp_strcpy_enddls_fastcall_win64:
     ; pop rbp
     ret
 
+;替换所有$为自定义ASCII符号
+;(源，源长，目标，目标长)
+;以0结尾的源，源长为负数自动算
+;源长也是符号替换的数量（相当于）
+kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
+    push rbp
+    mov  rbp, rsp
+    push rsi
+    push rdi
+    
+    or r9, r9
+    jz .error
+    ;目标长为0那还说啥
+
+    or   rdx, rdx
+    jns  .havelen
+    mov  r10, rcx
+    ;备份rcx
+    call kp_strlen_fastcall_win64
+    cmp  rax, dlsbur_len
+    ja   .error
+    mov  rdx, rax
+    mov  rcx, r10
+    ;恢复rcx
+
+.havelen:
+    mov rsi, rcx
+    ;现在rsi指向源
+    mov rdi, r8
+    mov rcx, r9
+    ;现在rcx就是长度了
+
+.replop:    
+    mov al, ('$')
+    mov ah, [rsi]
+
+    repne scasb
+    jne .exit
+
+    mov [rdi-1], ah
+    inc rsi
+    dec rdx
+
+    or  rdx, rdx
+    jz  .exit
+    or  rcx, rcx
+    jnz .replop
+
+
+
+.exit:
+
+;总之rax成功不返回空
+
+    pop rdi
+    pop rsi
+    pop rbp
+    
+    ret
+    
+.error:
+    xor rax, rax
+    jmp .exit
+
+
 ;内部函数，仅限日期功能用    
 kp_prtnum_frmrax_intime:
 ;默认rax已经赋值
@@ -749,7 +898,7 @@ kp_prtnum_frmrax_intime:
     inc  rdi
     neg  rax
 .np:
-    push rsi
+    ; push rsi
     push rcx
     push rdx
     push rbx
@@ -763,8 +912,9 @@ kp_prtnum_frmrax_intime:
     div  rbx
     push rdx
     or   rax, rax
-    jz   .preprt
-    jmp  .divlop
+    ; jz   .preprt
+    ; jmp  .divlop
+    jnz  .divlop
 .preprt:
     lea rbx, [bu]
     ;先打印到bu
@@ -781,7 +931,7 @@ kp_prtnum_frmrax_intime:
 
 ;数据处理，给日期函数用来对齐
 ;如果rsi不等于0就保留2位
-    mov  rsi,   [rbp+32]
+    ; mov  rsi,   [rbp+32]
     or   rsi,   rsi
     jz   .sk
     mov  ax,    [rbx]
@@ -804,13 +954,249 @@ kp_prtnum_frmrax_intime:
     pop rbx
     pop rdx
     pop rcx
-    pop rsi
+    ; pop rsi
     pop rdi
     ret
 
+;末尾拼接字符串，4个参数
+;（源，源长，目标起始，目标缓冲区长）
+;源长度为负数时候自动算
+;返回末尾\0指针，失败返回0
+kp_strend_fastcall_win64:
+
+    ;检查空指针和0长度
+    or rcx, rcx
+    jz .nullet
+    or r8,  r8
+    jz .nullet
+    or r9,  r9
+    jz .nullet
+    or rdx, rdx
+    jz .nullet
+
+    ;正片开始
+
+    mov  r10, rcx
+    mov  rcx, r8
+    call kp_strlenled_inside
+
+    sub rcx, r9
+    neg rcx
+    js  .nullet
+
+    mov r9,  rcx
+    mov rcx, r10
+
+.noauto:   
+
+    ;现在可以开始复制字符串
     
+    mov  r8, rax
+    call kp_strcpy_fastcall_win64
+    
+    ret
+
+.nullet:
+    xor rax, rax
+    ret
+
+;字符串末尾
+;只有一个参数，rcx放字符串起始，返回rax指向\0，失败返回0
+kp_strled_fastcall_win64:
+
+    xor  rax, rax
+    push rdi
+    mov  rdi, rcx
+    mov  rcx, -1
+    cld
+
+    repne scasb 
+    or  rcx, rcx
+    jz  .nofind
+    ; not rcx
+    ; dec rcx
+    ; mov rax, rcx
+    lea rax, [rdi-1]
+    pop rdi
+    ret
+    ; jmp .ret
+
+.nofind:
+    xor rax, rax
+.ret:
+    pop rdi
+    ret
+
+;内部函数，仅供内部使用
+kp_strlenled_inside:
+;只有一个参数，rcx放字符串起始，返回rax指向\0，rcx返回长度，失败均返回0
+    xor  rax, rax
+    push rdi
+    mov  rdi, rcx
+    mov  rcx, -1
+    cld
+
+    repne scasb 
+    or  rcx, rcx
+    jz  .nofind
+    not rcx
+    dec rcx
+    lea rax, [rdi-1]
+    pop rdi
+    ret
+    ; jmp .ret
+
+.nofind:
+    xor rax, rax
+    xor rcx, rcx
+.ret:
+    pop rdi
+    ret
+
+;利用系统API快速转UTF8为UTF16le
+;int(src,srclen,dst,dstlen)单位均为字节
+;不检查，直接就用API返回值*2
+;如果你传入的是strlen不含\0的话你要最后自己补0
+;我建议长度直接填-1
+kp_ezutf8t16le_fastcall_win64:
+    
+    adod
+
+    shr  r9,  1
+    push r9
+    push r8
+    sub  rsp, 32
+    ;影子空间
+    mov  r9,  rdx
+    mov  r8,  rcx
+    mov  rcx, 65001
+    xor  rdx, rdx
+
+    call MultiByteToWideChar
+
+    shl rax, 1
+
+    pdod
+
+    ret
+
+;时间函数的简短输入版本
+;void(filetime,快速字符串地址,结构体地址起始,禁用北京时间
+;关于禁用北京时间（0的话就不管，如果是非0的话就给UTC时间）
+kp_timefmt_fastcall_win64:    
+
+    adod
+
+    or rdx, rdx
+    jz .nodx
+.oudx:
+
+    push rbx
+    push rdi
+    push r9
+    push rdx
+    mov  rbx, rcx
+
+    or  r9,  r9
+    jz  .enboeg
+    mov r10, unboeg
+    sub rcx, r10
+.enboeg:
+
+    or  r8, r8
+    jnz .normal
+    lea r8, [dust]
+
+.normal:
+
+    adod
+
+    lea  r10, [r8+40]
+    push r10
+    lea  r10, [r8+32]
+    push r10
+    lea  r10, [r8+24]
+    push r10
+    lea  r10, [r8+16]
+    push r10
+    lea  r9,  [r8+8]
+    
+    sub  rsp, 32
+    call kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+
+    pdod
+
+;回写filetime
+
+    ;前面有个push rdx
+    pop  rdi
+    pop  r9
+    or   r9,  r9
+    jz   .nore
+    or   rdi, rdi
+    jz   .nore
+    mov  rdi, [rdi]
+    mov  al,  ('{')
+    mov  rcx, -1
+    repne scasb
+    jne  .nore
+    mov  rax, rbx
+    ;现在rax就是filetime
+    call kp_prtnum_frmrax
+    mov  rcx, rax
+    mov  rdx, -1
+    mov  r8,  rdi
+    mov  r9,  datelen
+    call kp_strcpy_enddls_fastcall_win64
+    mov  dl,  ('}')
+    mov  rcx, rdi
+    call kp_replace_single_dollar_symbol
+    pop  rdi
+    pop  rbx
+    pdod
+    ret
+
+    ;我知道这函数就是一坨屎
+    ;但是没有办法，因为要保证以前的兼容
+    ;现在只能写个憋屈的传送门滚木函数来搞
+    ;以后有时间再另外写这玩意的完整版本吧
+
+.nore:
+
+    pop rdi
+    pop rbx
+    pdod
+
+    ret
+
+.nodx:
+    lea rdx, [wasteimm]
+    jmp .oudx
+
+;替换一个$为自定义ASCII符号
+;(目标，字符放dl)
+;没有任何检查，内部函数
+kp_replace_single_dollar_symbol:
+    
+    push rdi
+    mov  al,      ('$')
+    mov  rcx,     -1
+    repne scasb
+    mov  [rdi-1], dl
+    pop  rdi
+    ret
+
+
+;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
+
+
+
+WARNING_SIGN:
 
 section .kpstdlib
+
+A_UNAVAILABLE_SIGN:
+
 ksignlabel:
 ;KUSSA(KUSSA_LTSC)
     jmp ksignlabel
@@ -859,6 +1245,14 @@ ksignlabel:
 ; 商业使用、营利实体使用、评估、测试、捆绑、AI 训练，
 ; 全部需要项目所有者事先纸质书面同意。
 ;
-; 2026年9月12日
+;2026年9月12日
+
+; 我去了我要累死了啊
+
+;2026年9月13日
+
+; 高中是地狱吗？今天可是918记难日
+
+;2026年9月18日
 
 ;到底了，就这么多~
