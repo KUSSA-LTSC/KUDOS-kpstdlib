@@ -240,7 +240,7 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     pop rdx
     add rdx,       48
     mov [rbx+rdi], dl
-    inc rdi
+    ; inc rdi
     dec rcx
     jnz .lre
 
@@ -471,13 +471,18 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     ;已经保存了所有参数
     mov rax,      rcx
 
-    xor rbx, rbx ;这行干嘛用的我也忘了
+    xor rbx, rbx ;这行干嘛用的我也忘了，其实没用
     
+    ;修改，但是行为基本不变
+    ;让ft=0时候也能正确返回
+    mov r10, unboeg
+    add rax, r10
+
     ;先换成秒
     mov rcx, 10000000
     xor rdx, rdx
     div rcx
-    mov rcx, boeg
+    mov rcx, aoeg
     add rax, rcx
     xor rdx, rdx
     ;现在rax就是总秒数
@@ -761,8 +766,9 @@ kp_strcpy_enddls_fastcall_win64:
     call kp_strlen_fastcall_win64
     mov  rdx, rax
     pop  rcx
-.busu:    
-    cmp rdx, r9
+.busu:   
+    lea r10,[rdx+1]
+    cmp r10, r9
     jae .mgd
     ;如果源比目标长就退出
     ;不检查rcx是不是0了因为0也没事
