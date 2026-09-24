@@ -70,7 +70,7 @@
 bits    64
 default rel
 
-;立项日期无从考究，但是可以确定在2026年8月28日及以前
+;立项日期无从考究，但是可以确定在2026年8月26日及以前
 
 ;虽然也是个教学用的性能没必要太好，但是还是想要追求完美一些
 ;为了方便调试和写，寄存器非必要全用r64
@@ -83,13 +83,14 @@ global  bu
 ; global  realdays
 ; global  realmonth
 ; global  realyears
-global  dlsbur
+global  dlsbur ; 这个可以自定义符号
 ; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
-global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
-global  kp_ezutf8t16le_fastcall_win64
-global  kp_strcpy_fastcall_win64
-global  kp_strcpy_enddls_fastcall_win64
 global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
+global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+global  kp_strcpy_enddls_fastcall_win64
+global  kp_ezutf8t16le_fastcall_win64
+global kp_sse_strlen_fastcall_win64
+global  kp_strcpy_fastcall_win64
 global  kp_strend_fastcall_win64
 global  kp_strled_fastcall_win64
 global  kp_strlen_fastcall_win64
@@ -240,7 +241,7 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     pop rdx
     add rdx,       48
     mov [rbx+rdi], dl
-    ; inc rdi
+    inc rdi
     dec rcx
     jnz .lre
 
@@ -767,7 +768,7 @@ kp_strcpy_enddls_fastcall_win64:
     mov  rdx, rax
     pop  rcx
 .busu:   
-    lea r10,[rdx+1]
+    lea r10, [rdx+1]
     cmp r10, r9
     jae .mgd
     ;如果源比目标长就退出
@@ -838,9 +839,13 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     push rsi
     push rdi
     
-    or r9, r9
-    jz .error
+    or  r9, r9
+    jz  .error
     ;目标长为0那还说啥
+    cmp r9, 8
+    ja  .error
+    ;修改，现在最多替换8个，因为我给的缓冲区就这么点
+    ;2026年9月24日
 
     or   rdx, rdx
     jns  .havelen
@@ -875,8 +880,6 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     jz  .exit
     or  rcx, rcx
     jnz .replop
-
-
 
 .exit:
 
@@ -1192,8 +1195,133 @@ kp_replace_single_dollar_symbol:
     pop  rdi
     ret
 
+;测试函数，SIMD版本的strlen
+;rcx放字符串起始
+;真就飞车还要安全带啊，烦死了
+kp_strlen_simd_fastcall_win64:
+
+    mov r9,  16
+    xor rdx, rdx
+
+    pxor xmm1, xmm1
+
+.label:
+
+    ;检查页边界
+    mov r10, rcx
+    and r10, 0xFFF
+    cmp r10, 4080
+    ja  .slow
+
+    movdqu   xmm0, [rcx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+    
+    or  r8, r8
+    jnz .found
+
+    add rdx, r9
+    add rcx, r9
+
+    jmp .label
+
+.found:
+
+    tzcnt r8d, r8d
+
+    lea rax, [rdx+r8]
+
+    ret
+
+.slow:
+
+    push rdi
+    mov  rdi, rcx
+    xor  rax, rax
+    neg  r10
+    lea  rcx, [r10+4096]
+    mov  r11, rcx
+    repne scasb
+    jne  .nofd
+    neg  rcx
+    lea  rcx, [r11+rcx-1]
+    lea  rax, [rdx+rcx]
+    pop  rdi
+    ret
+    
+.nofd:
+    add rdx, r11
+    mov rcx, rdi
+    pop rdi
+    jmp .label
+    
+;SSE版本的strlen    
+;rcx=src
+;注释的话留给两万年后吧
+kp_sse_strlen_fastcall_win64:
+
+    push rdi
+
+    xor rax, rax
+    mov r8,  rcx
+    mov rdx, rcx
+    and rdx, -16
+    mov r9,  16
+    add rdx, r9
+
+    neg rcx
+    add rcx, rdx
+
+    mov rdx, rcx
+    mov rdi, r8
+
+    repne scasb
+
+    je .found
+
+    mov rcx, rdi
+    
+    pop rdi
+
+    pxor xmm1, xmm1
+
+.label:
+
+    movdqa  xmm0, [rcx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8, r8
+
+    jnz .ssefound
+
+    add rcx, r9
+    add rdx, r9
+
+    jmp .label
+
+.ssefound:
+
+    bsf r8d, r8d
+
+    lea rax, [rdx+r8]
+    lea rcx, [rcx+r8]
+
+    ret
+
+.found:
+
+    not rcx
+
+    lea rax, [rdx+rcx]
+    mov rcx, rdi
+
+    pop rdi
+
+    ret
 
 ;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
+
 
 
 
@@ -1260,5 +1388,19 @@ ksignlabel:
 ; 高中是地狱吗？今天可是918记难日
 
 ;2026年9月18日
+
+; 中秋快乐
+; 快乐个屁，共度作业
+; 那个臃肿的filetime_to_realtime我迟早给它重写
+
+; 我真的是累死了要
+; 这臃肿的东西还有一堆没搞
+; 甚至还有一堆指令集
+
+; 技术上有一堆技术债
+; 功能上有一堆未完成
+; 注释也还差了一大大堆，AI写出来的注释就是狗屎，不像人写的
+
+;2026年9月24日
 
 ;到底了，就这么多~
