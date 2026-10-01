@@ -83,19 +83,28 @@ global  bu
 ; global  realdays
 ; global  realmonth
 ; global  realyears
-global  dlsbur ; 这个可以自定义符号
+global  dlsbur
+; 这个可以自定义符号
 ; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
 global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
 global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+global  kp_win32api_ezutf8t16le_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
-global  kp_ezutf8t16le_fastcall_win64
-global kp_sse_strlen_fastcall_win64
+global  kp_prtnum_frmrcx_fastcall_win64
+global  kp_avx2_strlen_fastcall_win64
+global  kp_sse2_strlen_fastcall_win64
+global  kp_sse_strlen_fastcall_win64
 global  kp_strcpy_fastcall_win64
 global  kp_strend_fastcall_win64
 global  kp_strled_fastcall_win64
 global  kp_strlen_fastcall_win64
 global  kp_timefmt_fastcall_win64
 
+;======WIN32API======
+
+extern  ReadFile
+extern  CreateFileW
+extern  GetFileSizeEx
 extern  MultiByteToWideChar
 
 section .data
@@ -148,10 +157,119 @@ section .data
     days_per_400_years equ 146097
     ;新增$替换缓冲区
     dlsbur:
-        times 64 db 0
+        times 8 db 0
     dlsbur_end:
     
     dlsbur_len equ (dlsbur_end-dlsbur)
+
+    align 16
+    hex2ascii_xlatable db '0123456789ABCDEF'
+
+    align 16
+    ;神人ascii2hex表
+    ascii2hex_xlatable:
+    times 48  db 0                       ; 0x00-0x2F 非法区
+    db           0,1,2,3,4,5,6,7,8,9     ; 0x30-0x39  '0'-'9'
+    times 7   db 0                       ; 0x3A-0x40  '9'到'A'之间
+    db           0xA,0xB,0xC,0xD,0xE,0xF ; 0x41-0x46  'A'-'F'
+    times 26  db 0                       ; 0x47-0x60  'F'到'a'之间
+    db           0xA,0xB,0xC,0xD,0xE,0xF ; 0x61-0x66  'a'-'f'
+    times 153 db 0                       ; 0x67-0xFF 非法区
+
+
+; 神秘常量，提取自windows.inc
+
+; ==================== 通用 ====================
+NULL                  equ 0
+TRUE                  equ 1
+FALSE                 equ 0
+CW_USEDEFAULT         equ 0x80000000
+INFINITE              equ 0xFFFFFFFF
+
+; ==================== 窗口类样式 ====================
+CS_VREDRAW            equ 0x0001
+CS_HREDRAW            equ 0x0002
+
+; ==================== 窗口样式 ====================
+WS_OVERLAPPED         equ 0x00000000
+WS_POPUP              equ 0x80000000
+WS_CHILD              equ 0x40000000
+WS_VISIBLE            equ 0x10000000
+WS_CAPTION            equ 0x00C00000
+WS_BORDER             equ 0x00800000
+WS_SYSMENU            equ 0x00080000
+WS_THICKFRAME         equ 0x00040000
+WS_MINIMIZEBOX        equ 0x00020000
+WS_MAXIMIZEBOX        equ 0x00010000
+WS_OVERLAPPEDWINDOW   equ WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
+
+; ==================== ShowWindow ====================
+SW_HIDE               equ 0
+SW_SHOWNORMAL         equ 1
+SW_SHOWMINIMIZED      equ 2
+SW_SHOWMAXIMIZED      equ 3
+SW_SHOW               equ 5
+SW_RESTORE            equ 9
+
+; ==================== 窗口消息 ====================
+WM_CREATE             equ 0x0001
+WM_DESTROY            equ 0x0002
+WM_SIZE               equ 0x0005
+WM_PAINT              equ 0x000F
+WM_CLOSE              equ 0x0010
+WM_QUIT               equ 0x0012
+WM_KEYDOWN            equ 0x0100
+WM_KEYUP              equ 0x0101
+WM_CHAR               equ 0x0102
+WM_COMMAND            equ 0x0111
+WM_TIMER              equ 0x0113
+WM_MOUSEMOVE          equ 0x0200
+WM_LBUTTONDOWN        equ 0x0201
+WM_LBUTTONUP          equ 0x0202
+WM_RBUTTONDOWN        equ 0x0204
+WM_RBUTTONUP          equ 0x0205
+
+; ==================== 消息框 ====================
+MB_OK                 equ 0x00000000
+MB_OKCANCEL           equ 0x00000001
+MB_YESNO              equ 0x00000004
+MB_ICONERROR          equ 0x00000010
+MB_ICONQUESTION       equ 0x00000020
+MB_ICONWARNING        equ 0x00000030
+MB_ICONINFORMATION    equ 0x00000040
+
+; ==================== 消息框返回值 ====================
+IDOK                  equ 1
+IDCANCEL              equ 2
+IDYES                 equ 6
+IDNO                  equ 7
+
+; ==================== 系统资源 ====================
+IDC_ARROW             equ 32512
+IDI_APPLICATION       equ 32512
+
+; ==================== 颜色 ====================
+COLOR_WINDOW          equ 5
+COLOR_BTNFACE         equ 15
+
+; ==================== 内存 ====================
+MEM_COMMIT            equ 0x1000
+MEM_RESERVE           equ 0x2000
+MEM_DECOMMIT          equ 0x4000
+MEM_RELEASE           equ 0x8000
+PAGE_NOACCESS         equ 0x01
+PAGE_READWRITE        equ 0x04
+
+; ==================== 文件 ====================
+GENERIC_READ          equ 0x80000000
+GENERIC_WRITE         equ 0x40000000
+CREATE_NEW            equ 1
+CREATE_ALWAYS         equ 2
+OPEN_EXISTING         equ 3
+OPEN_ALWAYS           equ 4
+TRUNCATE_EXISTING     equ 5
+FILE_ATTRIBUTE_NORMAL equ 0x80
+INVALID_HANDLE_VALUE  equ -1
 
 section .text
 
@@ -281,6 +399,7 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 
 
 ;待定议程，参数，比如RAX可以说明是否启用有符号，是否启用地址回写，如果启用，地址默认起始RBX，我也不知道64位有没有能够专门隔着写的文字命令，以前我记得可以直接设定方向，间隔，然后放文字就行
+;现在没有待定了，这个函数被废弃了，现在是x64而不是8086
 
 ;单独打印rax，给日志功能用，应该不会破坏任何寄存器
 kp_prtnum_frmrax:
@@ -331,7 +450,13 @@ kp_prtnum_frmrax:
     pop rdi
     ret
 
-;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
+;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数（为啥这里会有这个）
+;（这行注释就明明白白写在kp_filetime_to_realtime_frmrax_ret_fastcall_win64函数开头）
+
+;单独打印rcx
+kp_prtnum_frmrcx_fastcall_win64:
+    mov rax, rcx
+    jmp kp_prtnum_frmrax
 
 ;文本复制，带检查（实际没有用的检查）
 ;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
@@ -839,13 +964,9 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     push rsi
     push rdi
     
-    or  r9, r9
-    jz  .error
+    or r9, r9
+    jz .error
     ;目标长为0那还说啥
-    cmp r9, 8
-    ja  .error
-    ;修改，现在最多替换8个，因为我给的缓冲区就这么点
-    ;2026年9月24日
 
     or   rdx, rdx
     jns  .havelen
@@ -859,6 +980,10 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     ;恢复rcx
 
 .havelen:
+    cmp rdx, 8
+    ja  .error
+    ;修改，现在最多替换8个，因为我给的缓冲区就这么点
+    ;2026年9月24日
     mov rsi, rcx
     ;现在rsi指向源
     mov rdi, r8
@@ -869,6 +994,7 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     mov al, ('$')
     mov ah, [rsi]
 
+    cld
     repne scasb
     jne .exit
 
@@ -1067,7 +1193,7 @@ kp_strlenled_inside:
 ;不检查，直接就用API返回值*2
 ;如果你传入的是strlen不含\0的话你要最后自己补0
 ;我建议长度直接填-1
-kp_ezutf8t16le_fastcall_win64:
+kp_win32api_ezutf8t16le_fastcall_win64:
     
     adod
 
@@ -1147,6 +1273,7 @@ kp_timefmt_fastcall_win64:
     mov  rdi, [rdi]
     mov  al,  ('{')
     mov  rcx, -1
+    cld
     repne scasb
     jne  .nore
     mov  rax, rbx
@@ -1188,8 +1315,10 @@ kp_timefmt_fastcall_win64:
 kp_replace_single_dollar_symbol:
     
     push rdi
+    mov  rdi,     rcx
     mov  al,      ('$')
     mov  rcx,     -1
+    cld
     repne scasb
     mov  [rdi-1], dl
     pop  rdi
@@ -1241,6 +1370,7 @@ kp_strlen_simd_fastcall_win64:
     neg  r10
     lea  rcx, [r10+4096]
     mov  r11, rcx
+    cld
     repne scasb
     jne  .nofd
     neg  rcx
@@ -1255,12 +1385,15 @@ kp_strlen_simd_fastcall_win64:
     pop rdi
     jmp .label
     
-;SSE版本的strlen    
-;rcx=src
+;SSE版本的strlen，rcx=src
+;ONE OF 目前写的最诡异的函数
 ;注释的话留给两万年后吧
+;非常的巧妙以至于改一个字母都可能完全奔溃
 kp_sse_strlen_fastcall_win64:
 
     push rdi
+
+    cld
 
     xor rax, rax
     mov r8,  rcx
@@ -1287,7 +1420,7 @@ kp_sse_strlen_fastcall_win64:
 
 .label:
 
-    movdqa  xmm0, [rcx]
+    movdqa   xmm0, [rcx]
     pcmpeqb  xmm0, xmm1
     pmovmskb r8d,  xmm0
 
@@ -1314,11 +1447,381 @@ kp_sse_strlen_fastcall_win64:
     not rcx
 
     lea rax, [rdx+rcx]
-    mov rcx, rdi
+    lea rcx, [rdi-1]
 
     pop rdi
 
     ret
+
+;测试函数，用MOVSB复制内存
+;建议在支持ERMSB的CPU上用
+;(src,srclen,dst,dstlen)
+kp_ermsb_fastcall_win64:
+
+    cld
+
+    cmp rdx, r9
+    ja  .error
+
+    push rsi
+    push rdi
+    mov  rsi, rcx
+    mov  rdi, r8
+
+    mov rcx, rdx
+    rep movsb
+
+    mov rax, rdi
+
+    pop rdi
+    pop rsi
+
+    ret
+
+.error:    
+
+    xor rax, rax
+    ret
+
+
+
+;把二进制按照16进制来读取，并且转换成16进制ascii文本
+;（源，源长，目标，目标长）单位字节
+;返回：末尾 \0 的地址，链式调用时从该地址覆盖写入
+;依旧不检查空指针，注释留给明天
+kp_hex2ascii_fastcall_win64:
+
+    cld
+
+    lea r10, [rdx*2]
+    cmp r10, r9
+    jae .mgd
+    
+    test rdx, rdx
+    jz   .mgd
+    
+    push rbx
+    push rdi
+    push rsi
+
+    xchg rcx, rdx
+
+    lea rbx, [hex2ascii_xlatable]
+    
+    mov rdi, r8
+    mov rsi, rdx
+    ;rsi指向源
+    
+;循环
+.xlatloop:
+
+    lodsb
+
+    mov r9b, al
+    shr al,  4
+    
+    xlat
+    stosb
+
+    mov al, r9b
+    and al, 0xF
+    ;0b1111
+
+    xlat
+    stosb
+
+    dec rcx
+    jnz .xlatloop
+
+    xor al, al
+
+    stosb
+    ;末尾补0
+
+    lea rax, [rdi-1]
+    pop rsi
+    pop rdi
+    pop rbx
+
+    ret
+
+.mgd:
+    xor rax, rax
+    ret
+
+;两个ascii当一个byte
+;如果你最后写的是A\0这种的话，查表大概率是不会执行
+;（源，源长，目标，目标长）单位字节
+;返回：最后一个数据字节之后的地址，链式调用时从该地址继续写入
+;但是你要自己算好剩余长度或者用动态内存
+kp_ascii2hex_fastcall_win64:
+
+    cld
+
+    test rdx, rdx
+    jz   .mgd
+
+    shl r9,  1
+    cmp rdx, r9
+    ja  .mgd
+
+;正文
+
+    push rbx
+    push rdi
+    push rsi
+
+    mov rsi, rcx
+    mov rdi, r8
+    mov rcx, rdx
+    shr rcx, 1
+
+    lea rbx, [ascii2hex_xlatable]
+
+.xlatloop:
+
+    lodsb
+
+    xlat
+
+    mov r9b, al
+    
+    lodsb
+
+    xlat
+
+    shl r9b, 4
+    or  al,  r9b
+
+    stosb
+
+    dec rcx
+    jnz .xlatloop
+
+    lea rax, [rdi]
+
+    pop rsi
+    pop rdi
+    pop rbx
+
+    ret
+
+.mgd:
+
+    xor rax, rax
+
+    ret
+
+;目前最好用的strlen
+;爆改sse2版本
+;rcx=src
+kp_sse2_strlen_fastcall_win64:
+
+    mov rdx, rcx
+    mov r9,  rcx
+    and rdx, -16
+    sub rcx, rdx
+
+    pxor     xmm1, xmm1
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    shr r8d, cl
+    jnz .found
+
+    test rdx, 16
+    ;检查对齐32位
+    jz   .ssego
+
+    add rdx, 16
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .gofind
+
+.ssego:
+    add rdx, 16
+.sseloop:
+
+    movdqa   xmm0, [rdx]
+    movdqa   xmm2, [rdx+16]
+    pcmpeqb  xmm0, xmm1
+    pcmpeqb  xmm2, xmm1
+    pmovmskb r8d,  xmm0
+    pmovmskb eax,  xmm2
+    
+    shl  eax, 16
+    or   r8d, eax
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, 32
+    jmp .sseloop
+
+.gofind:
+
+    tzcnt eax, r8d
+    sub   rdx, r9
+    add   rax, rdx
+    
+    ret
+
+.found:
+
+    tzcnt eax, r8d
+
+    ret
+
+.ssefound:
+
+    tzcnt eax, r8d
+
+    sub rdx, r9
+    add rax, rdx
+    ret
+
+;爆改avx2版本
+;rcx=src
+kp_avx2_strlen_fastcall_win64:
+
+    mov rdx, rcx
+    mov r9,  rcx
+    and rdx, -32
+    sub rcx, rdx
+
+    vpxor     ymm1,ymm1,ymm1
+    vmovdqa   ymm0, [rdx]
+    vpcmpeqb  ymm2,ymm0,ymm1
+    vpmovmskb r8d,  ymm2
+
+    shr r8d, cl
+    jnz .found
+
+    test rdx, 32
+    ;检查对齐64位
+    jz   .avxgo
+
+    add rdx, 32
+
+    vmovdqa   ymm0, [rdx]
+    vpcmpeqb  ymm2,ymm0, ymm1
+    vpmovmskb r8d,  ymm2
+
+    test r8d, r8d
+    jnz  .gofind
+
+.avxgo:
+    add rdx, 32
+.avxloop:
+
+    vmovdqa   ymm0, [rdx]
+    vmovdqa   ymm2, [rdx+32]
+    vpcmpeqb  ymm0,ymm0, ymm1
+    vpcmpeqb  ymm2,ymm2, ymm1
+    vpmovmskb r8d,  ymm0
+    vpmovmskb eax,  ymm2
+    
+    shl  rax, 32
+    or   r8,  rax
+    test r8,  r8
+    jnz  .avxfound
+
+    add rdx, 64
+    jmp .avxloop
+
+.gofind:
+
+    tzcnt rax, r8
+    sub   rdx, r9
+    add   rax, rdx
+    vzeroupper
+    ret
+
+.found:
+
+    tzcnt rax, r8
+    vzeroupper
+    ret
+
+.avxfound:
+
+    tzcnt rax, r8
+    vzeroupper
+    sub   rdx, r9
+    add   rax, rdx
+    ret
+
+;封装CreateFileW，返回值按照api的来，但是失败为0
+;int(lpFileName,dwDesiredAccess,dwShareMode,dwCreationDisposition)
+;lpSecurityAttributes传NULL，hTemplateFile传NULL
+;dwFlagsAndAttributes传FILE_ATTRIBUTE_NORMAL
+;没有任何检查
+kp_win32api_createfile_w_fastcall_win64:
+    
+    adod
+
+    push r15 ;垃圾对齐
+
+    push NULL
+    push FILE_ATTRIBUTE_NORMAL
+    push r9
+
+    xor r9,  r9
+    xor r15, r15
+
+    sub  rsp, 32
+    call CreateFileW
+
+    cmp   rax, -1
+    cmove rax, r15
+
+    mov r15, [rsp+56] ;恢复
+
+    pdod
+
+    ret;对的真就这么一点点
+
+;封装GetFileSizeEx
+;int(hFile,lpFileSize)
+;和api一样，失败返回0，成功非0
+kp_win32api_get_file_size_ex_fastcall_win64:
+
+    adod
+
+    sub  rsp, 32
+    call GetFileSizeEx
+
+    pdod
+
+    ret;最短小的吧估计
+
+;封装ReadFile
+;int(hFile,lpBuffer,nNumberOfBytesToRead,lpNumberOfBytesRead)
+;行为基本和api一样，第5个参数永远为NULL
+;nNumberOfBytesToRead，想读多少字节。DWORD，32 位。
+;lpNumberOfBytesRead，指向一个 DWORD 的指针，API 把“实际读了多少”写进去。这个值可能小于你想读的。
+kp_win32api_read_file_fastcall_win64:
+
+    adod
+
+    push NULL ;对齐
+    push NULL
+
+    sub  rsp, 32
+    call ReadFile
+
+    pdod
+
+    ret
+
+; 封装WriteFile
+;（句柄，源，源长，实际写入指针）
+;（hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten）
+
 
 ;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
 
@@ -1401,6 +1904,14 @@ ksignlabel:
 ; 功能上有一堆未完成
 ; 注释也还差了一大大堆，AI写出来的注释就是狗屎，不像人写的
 
+; 还是广井菊里我最喜欢的一个
+
 ;2026年9月24日
+
+; 人老了真是不中用了，今天就写了02个函数
+; 九月的最后一天啊
+; 作业咋能当凳子坐了啊
+
+;2026年9月30日
 
 ;到底了，就这么多~
