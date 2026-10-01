@@ -96,16 +96,21 @@ global  kp_win32api_createfile_w_fastcall_win64
 global  kp_win32api_ezutf8t16le_fastcall_win64
 global  kp_win32api_write_file_fastcall_win64
 global  kp_win32api_read_file_fastcall_win64
+global  kp_win32api_msgbox_w_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
 global  kp_sse2_strlen_fastcall_win64
+global  kp_strlen_simd_fastcall_win64
 global  kp_sse_strlen_fastcall_win64
+global  kp_hex2ascii_fastcall_win64
+global  kp_ascii2hex_fastcall_win64
+global  kp_timefmt_fastcall_win64
 global  kp_strcpy_fastcall_win64
 global  kp_strend_fastcall_win64
 global  kp_strled_fastcall_win64
 global  kp_strlen_fastcall_win64
-global  kp_timefmt_fastcall_win64
+global  kp_ermsb_fastcall_win64
 
 ;======WIN32API======
 
@@ -113,9 +118,11 @@ extern  ReadFile
 extern  WriteFile
 extern  CloseHandle
 extern  CreateFileW
+extern  MessageBoxW
 extern  GetFileSizeEx
 extern  SetFilePointerEx
 extern  MultiByteToWideChar
+extern  WideCharToMultiByte
 
 section .data
     ;数据先丢这里
@@ -1901,12 +1908,42 @@ kp_win32api_close_handle_fastcall_win64:
 
     ret
 
+;封装MessageBoxW
+kp_win32api_msgbox_w_fastcall_win64:
 
+    adod
 
+    sub rsp, 32
 
+    call MessageBoxW
 
+    pdod
 
+    ret
 
+;封装WideCharToMultiByte
+;（源，源长，目标，目标字节长）
+kp_win32api_ezutf16le2utf8_fastcall_win64:
+
+    adod
+
+    push NULL
+    push NULL
+    push r9
+    push r8
+
+    sub rsp, 32
+
+    mov r9,  rdx
+    mov r8,  rcx
+    xor edx, edx
+    mov ecx, 65001
+
+    call WideCharToMultiByte
+
+    pdod
+
+    ret
 
 
 ;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
