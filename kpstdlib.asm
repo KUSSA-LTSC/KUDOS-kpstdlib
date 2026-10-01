@@ -88,7 +88,14 @@ global  dlsbur
 ; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
 global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
 global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+global  kp_win32api_get_file_pointer_ex_fastcall_win64
+global  kp_win32api_set_file_pointer_ex_fastcall_win64
+global  kp_win32api_get_file_size_ex_fastcall_win64
+global  kp_win32api_close_handle_fastcall_win64
+global  kp_win32api_createfile_w_fastcall_win64
 global  kp_win32api_ezutf8t16le_fastcall_win64
+global  kp_win32api_write_file_fastcall_win64
+global  kp_win32api_read_file_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
@@ -103,8 +110,11 @@ global  kp_timefmt_fastcall_win64
 ;======WIN32API======
 
 extern  ReadFile
+extern  WriteFile
+extern  CloseHandle
 extern  CreateFileW
 extern  GetFileSizeEx
+extern  SetFilePointerEx
 extern  MultiByteToWideChar
 
 section .data
@@ -270,6 +280,15 @@ OPEN_ALWAYS           equ 4
 TRUNCATE_EXISTING     equ 5
 FILE_ATTRIBUTE_NORMAL equ 0x80
 INVALID_HANDLE_VALUE  equ -1
+FILE_BEGIN            equ 0
+FILE_CURRENT          equ 1
+FILE_END              equ 2
+FILE_SHARE_READ       equ 1
+FILE_SHARE_WRITE      equ 2
+FILE_SHARE_DELETE     equ 4
+STD_INPUT_HANDLE      equ -10
+STD_OUTPUT_HANDLE     equ -11
+STD_ERROR_HANDLE      equ -12
 
 section .text
 
@@ -1821,6 +1840,73 @@ kp_win32api_read_file_fastcall_win64:
 ; 封装WriteFile
 ;（句柄，源，源长，实际写入指针）
 ;（hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten）
+kp_win32api_write_file_fastcall_win64:
+
+    adod
+
+    push rax     ;占位
+    push NULL
+    sub  rsp, 32
+
+    call WriteFile
+
+    pdod
+
+    ret
+
+;封装SetFilePointerEx
+;（句柄，偏移量，新位置指针，起始位置）
+;（hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod）
+kp_win32api_set_file_pointer_ex_fastcall_win64:
+
+    adod
+
+    sub rsp, 32
+
+    call SetFilePointerEx
+
+    pdod
+
+    ret;最短的！
+
+;获取文件指针
+;（句柄，64位变量指针）
+kp_win32api_get_file_pointer_ex_fastcall_win64:
+
+    adod
+
+    sub rsp, 32
+
+    mov r8,  rdx
+    xor rdx, rdx
+    mov r9d, FILE_CURRENT
+
+    call SetFilePointerEx
+
+    pdod
+
+    ret
+
+;封装CloseHandle
+;(handle)
+kp_win32api_close_handle_fastcall_win64:
+
+    adod
+
+    sub rsp, 32
+
+    call CloseHandle
+
+    pdod
+
+    ret
+
+
+
+
+
+
+
 
 
 ;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
@@ -1913,5 +1999,16 @@ ksignlabel:
 ; 作业咋能当凳子坐了啊
 
 ;2026年9月30日
+
+; 今天是10月01日国庆
+
+; 在这个幸福的日子里，我诚心祝祖国生日快乐。
+; 在這個幸福的日子裡，我誠心祝祖國生日快樂。
+
+; 今天写了很多吧，比如avx2版本的strlen
+
+; 代码破2000行了，但是大部分都是注释，O(∩_∩)O哈哈~
+
+;2026年10月1日
 
 ;到底了，就这么多~
