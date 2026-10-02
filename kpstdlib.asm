@@ -49,7 +49,8 @@
 
 ;代码往下
 
-%include 'third.inc'
+; %include 'third.inc'
+%include 'kmarco.inc'
 
 ;宏展开放这里了别再问我啦！
 ;就是开头的宏文件里面的，我自己写的
@@ -65,7 +66,45 @@
 ; %macro pdod 0
 ;     mov rsp,rbp
 ;     pop rbp
+; %endmacro  
+
+;kmarco.inc
+
+; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
+; All rights reserved.
+;
+; SPDX-License-Identifier: LicenseRef-scancode-kapivara-sal-1.0
+
+; %macro adod 0
+;     push rbp
+;     mov rbp , rsp
+;     and rsp , -16
+; %endmacro
+
+; %macro pdod 0
+;     mov rsp,rbp
+;     pop rbp
 ; %endmacro    
+
+; %macro kook 2-*
+;     push rbp
+;     mov  rbp, rsp
+;     and  rsp, -16
+;     %if (%0 & 1)
+;         push rax
+;     %endif
+;     %rep %0
+;         %rotate (%0 - 1)
+;         push %1
+;     %endrep
+;     sub rsp, 32
+; %endmacro
+
+; 等价于pdod
+; %macro kaak 0
+;     mov rsp, rbp
+;     pop rbp
+; %endmacro
 
 bits    64
 default rel
@@ -97,6 +136,7 @@ global  kp_win32api_ezutf8t16le_fastcall_win64
 global  kp_win32api_write_file_fastcall_win64
 global  kp_win32api_read_file_fastcall_win64
 global  kp_win32api_msgbox_w_fastcall_win64
+global  kp_text_format_divide_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
@@ -119,6 +159,8 @@ extern  WriteFile
 extern  CloseHandle
 extern  CreateFileW
 extern  MessageBoxW
+extern  VirtualFree
+extern  VirtualAlloc
 extern  GetFileSizeEx
 extern  SetFilePointerEx
 extern  MultiByteToWideChar
@@ -197,106 +239,184 @@ section .data
 ; 神秘常量，提取自windows.inc
 
 ; ==================== 通用 ====================
+; 空内容、空指针
 NULL                  equ 0
+; 真
 TRUE                  equ 1
+; 假
 FALSE                 equ 0
+; 窗口位置的默认值，让系统自己选
 CW_USEDEFAULT         equ 0x80000000
+; 无限等待
 INFINITE              equ 0xFFFFFFFF
 
 ; ==================== 窗口类样式 ====================
+; 窗口垂直方向变化时重绘
 CS_VREDRAW            equ 0x0001
+; 窗口水平方向变化时重绘
 CS_HREDRAW            equ 0x0002
 
 ; ==================== 窗口样式 ====================
+; 重叠窗口（默认无边框）
 WS_OVERLAPPED         equ 0x00000000
+; 弹出式窗口
 WS_POPUP              equ 0x80000000
+; 子窗口
 WS_CHILD              equ 0x40000000
+; 窗口可见
 WS_VISIBLE            equ 0x10000000
+; 有标题栏
 WS_CAPTION            equ 0x00C00000
+; 有边框
 WS_BORDER             equ 0x00800000
+; 有系统菜单（左上角图标）
 WS_SYSMENU            equ 0x00080000
+; 可调整大小的边框
 WS_THICKFRAME         equ 0x00040000
+; 有最小化按钮
 WS_MINIMIZEBOX        equ 0x00020000
+; 有最大化按钮
 WS_MAXIMIZEBOX        equ 0x00010000
+; 标准重叠窗口：标题栏+系统菜单+可缩放+最小化+最大化
 WS_OVERLAPPEDWINDOW   equ WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
 
 ; ==================== ShowWindow ====================
+; 隐藏窗口
 SW_HIDE               equ 0
+; 正常显示
 SW_SHOWNORMAL         equ 1
+; 最小化显示
 SW_SHOWMINIMIZED      equ 2
+; 最大化显示
 SW_SHOWMAXIMIZED      equ 3
+; 按最近状态显示
 SW_SHOW               equ 5
+; 从最小化/最大化恢复
 SW_RESTORE            equ 9
 
 ; ==================== 窗口消息 ====================
+; 窗口创建
 WM_CREATE             equ 0x0001
+; 窗口销毁
 WM_DESTROY            equ 0x0002
+; 窗口大小改变
 WM_SIZE               equ 0x0005
+; 需要重绘
 WM_PAINT              equ 0x000F
+; 关闭请求
 WM_CLOSE              equ 0x0010
+; 退出消息循环
 WM_QUIT               equ 0x0012
+; 键盘按下
 WM_KEYDOWN            equ 0x0100
+; 键盘抬起
 WM_KEYUP              equ 0x0101
+; 字符输入
 WM_CHAR               equ 0x0102
+; 菜单/控件命令
 WM_COMMAND            equ 0x0111
+; 定时器触发
 WM_TIMER              equ 0x0113
+; 鼠标移动
 WM_MOUSEMOVE          equ 0x0200
+; 左键按下
 WM_LBUTTONDOWN        equ 0x0201
+; 左键抬起
 WM_LBUTTONUP          equ 0x0202
+; 右键按下
 WM_RBUTTONDOWN        equ 0x0204
+; 右键抬起
 WM_RBUTTONUP          equ 0x0205
 
 ; ==================== 消息框 ====================
+; 只有一个"确定"按钮
 MB_OK                 equ 0x00000000
+; "确定"+"取消"
 MB_OKCANCEL           equ 0x00000001
+; "是"+"否"
 MB_YESNO              equ 0x00000004
+; 错误图标
 MB_ICONERROR          equ 0x00000010
+; 问号图标
 MB_ICONQUESTION       equ 0x00000020
+; 警告图标
 MB_ICONWARNING        equ 0x00000030
+; 信息图标
 MB_ICONINFORMATION    equ 0x00000040
 
 ; ==================== 消息框返回值 ====================
+; 用户点了"确定"
 IDOK                  equ 1
+; 用户点了"取消"
 IDCANCEL              equ 2
+; 用户点了"是"
 IDYES                 equ 6
+; 用户点了"否"
 IDNO                  equ 7
 
 ; ==================== 系统资源 ====================
+; 标准箭头光标
 IDC_ARROW             equ 32512
+; 标准应用图标
 IDI_APPLICATION       equ 32512
 
 ; ==================== 颜色 ====================
+; 窗口背景色（白）
 COLOR_WINDOW          equ 5
+; 按钮表面色（灰）
 COLOR_BTNFACE         equ 15
 
 ; ==================== 内存 ====================
+; 提交：分配物理存储
 MEM_COMMIT            equ 0x1000
+; 保留：只占地址空间，不分配物理存储
 MEM_RESERVE           equ 0x2000
+; 取消提交，保留地址
 MEM_DECOMMIT          equ 0x4000
+; 完全释放（地址+存储）
 MEM_RELEASE           equ 0x8000
+; 不可访问
 PAGE_NOACCESS         equ 0x01
+; 可读可写
 PAGE_READWRITE        equ 0x04
 
 ; ==================== 文件 ====================
+; 读取权限
 GENERIC_READ          equ 0x80000000
+; 写入权限
 GENERIC_WRITE         equ 0x40000000
+; 创建新文件，已存在则失败
 CREATE_NEW            equ 1
+; 总是创建，已存在则覆盖
 CREATE_ALWAYS         equ 2
+; 只打开已存在的文件
 OPEN_EXISTING         equ 3
+; 打开已存在的，不存在则创建
 OPEN_ALWAYS           equ 4
+; 打开已存在的并清空
 TRUNCATE_EXISTING     equ 5
+; 普通文件属性
 FILE_ATTRIBUTE_NORMAL equ 0x80
+; 无效句柄（API 失败返回值）
 INVALID_HANDLE_VALUE  equ -1
+; 从文件头开始
 FILE_BEGIN            equ 0
+; 从当前位置开始
 FILE_CURRENT          equ 1
+; 从文件尾开始
 FILE_END              equ 2
+; 允许其他进程读
 FILE_SHARE_READ       equ 1
+; 允许其他进程写
 FILE_SHARE_WRITE      equ 2
+; 允许其他进程删除
 FILE_SHARE_DELETE     equ 4
+; 标准输入句柄
 STD_INPUT_HANDLE      equ -10
+; 标准输出句柄
 STD_OUTPUT_HANDLE     equ -11
+; 标准错误句柄
 STD_ERROR_HANDLE      equ -12
-
 section .text
 
 kp_strlen_fastcall_win64:
@@ -1946,6 +2066,304 @@ kp_win32api_ezutf16le2utf8_fastcall_win64:
     ret
 
 
+
+
+;封装VirtualAlloc
+;（地址，大小，分配类型，保护属性）
+;（lpAddress, dwSize, flAllocationType, flProtect）
+kp_win32api_virtual_alloc_fastcall_win64:
+
+    adod
+
+    sub rsp, 32
+
+    call VirtualAlloc
+
+    pdod
+
+    ret
+
+
+
+;封装VirtualFree
+;（地址，大小，释放类型）
+;（lpAddress, dwSize, dwFreeType）
+kp_win32api_virtual_free_fastcall_win64:
+
+    adod
+
+    sub rsp, 32
+
+    call VirtualFree
+
+    pdod
+
+    ret
+
+;本来字符ascii_hex格式化第一步
+;文本分组，字节级别处理，仅适合ascii及utf8
+;你可以通过参数4输入负数来忽略（禁用）长度检查
+; 你可以通过参数6输入负数来忽略（禁用）换行功能
+;默认用空格划分，换行用0x0A0D（小端序）也就是回车换行
+;（源，源长，目标，目标长，多少个字节一组，一行多少组）
+;srclen=0直接退出，失败返回NULL，成功返回指向目标末尾\0指针
+kp_text_format_divide_fastcall_win64:
+
+;检查srclen和dstlen
+
+    ;表演个脱裤子放屁
+    push rbp
+    mov  rbp, rsp
+
+;===STACK===
+; [rbp+56]  arg 6   行组数
+; [rbp+48]  arg 5   组大小
+; [rbp+40]  shadow 4
+; [rbp+32]  shadow 3
+; [rbp+24]  shadow 2
+; [rbp+16]  shadow 1
+; [rbp+8]   返回地址
+; [rbp+0]   .ori.RBP
+
+    mov r10, [rbp+48]
+    mov r11, [rbp+56]
+
+    pop rbp
+
+    push r12
+    push r13
+    push r14
+    push r15
+
+    test r10, r10
+    jz   .error
+    ;0个字节一组我也没办法
+    test r11, r11
+    jz   .error
+
+    ;检查rdx
+    test rdx, rdx
+    jz   .error
+    jns  .havestrlen
+    push rcx
+    push rdx
+    push r8
+    push r9
+    push r10
+    push r11
+    adod
+    sub  rsp, 32
+    call kp_sse2_strlen_fastcall_win64
+    pdod
+    pop  r11
+    pop  r10
+    pop  r9
+    pop  r8
+    pop  rdx
+    pop  rcx
+    mov  rdx, rax
+.havestrlen:
+    test rdx, rdx
+    jz   .error
+
+    mov r12, r10
+    mov r13, r11
+    mov r14, rdx
+
+    xor eax, eax
+
+    test r9,  r9
+    jns  .r9ok
+    bts  rax, 0  ;禁用长度检查
+
+.r9ok:
+    test r11, r11
+    jns  .chk
+    bts  rax, 1   ;禁用换行
+
+.chk:
+
+    jmp .chklen
+
+;代码主体，两个
+;分别为有换行和没有
+;众生平等main，众生平等rdx，其它的都一样例外rax's bit 1
+.main:
+
+    bt   rax, 1
+    jc   .disablenewline
+    ;rcx=src,rdx=len,r8=dst,r10=groups,r11=lines,r12=objspergroup,r13=groupsperline
+    push rdi
+    push rsi
+    mov  rsi, rcx
+    mov  rdi, r8
+    ;大循环=lines-1
+    ;传送门
+    cmp  r11, 1
+    je   .last
+    lea  rcx, [r11-1]
+;大循环，总共执行行数-1
+.big:
+    push rcx
+    mov  rax, 0x20
+    mov  rcx, r13
+    cmp  rcx, 1
+    jz   .onegpl
+    dec  rcx
+    ;中间循环，每次执行行中组数-1
+    .mid:
+    push rcx
+    ;小循环，每次复制一个组并且格式化
+    mov  rcx, r12
+    rep movsb
+    stosb
+    pop  rcx
+    dec  rcx
+    jnz  .mid
+    ;当每行组数为1时候
+    .onegpl:
+    mov  rcx, r12
+    rep movsb
+    mov  rax, 0x0A0D
+    stosw
+    pop  rcx
+    dec  rcx
+    jnz  .big
+.last:
+    lea  rax, [r11-1]
+    mov  r15, r13
+    imul rax,r15
+    neg  rax
+    add  rax, r10
+    ;现在rax就是剩余组数
+    mov  rcx, rax
+    mov  rax, 0x20
+    cmp  rcx, 1
+    je   .reallast
+    dec  rcx
+    .lastloop:
+    push rcx
+    mov  rcx, r12
+    rep movsb
+    stosb
+    pop  rcx
+    dec  rcx
+    jnz  .lastloop
+
+    .reallast:
+    mov rax,        r10
+    dec rax
+    imul rax,r12
+    mov r15,        r14
+    sub r15,        rax
+    mov rcx,        r15
+    rep movsb
+    mov byte [rdi], 0
+    
+    mov rax, rdi
+    pop rsi
+    pop rdi
+    jmp .normalexit
+
+.disablenewline:
+
+    push rdi
+    push rsi
+    mov  rsi, rcx
+    mov  rdi, r8
+    mov  rcx, r10
+    mov  rax, 0x20
+    cmp  rcx, 1
+    je   .dislast
+    dec  rcx
+    .disbig:
+    push rcx
+    mov  rcx, r12
+    rep movsb
+    stosb
+    pop  rcx
+    dec  rcx
+    jnz  .disbig
+
+.dislast:
+    mov rax,        r10
+    dec rax
+    imul rax,r12
+    mov r15,        r14
+    sub r15,        rax
+    mov rcx,        r15
+    rep movsb
+    mov byte [rdi], 0
+    mov rax,        rdi
+    pop rsi
+    pop rdi
+
+.normalexit:
+
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    
+    ret
+.chklen:
+
+    push rax
+    push rdx
+    push rbx
+
+    mov rax, rdx
+    xor edx, edx
+    mov rbx, r10
+
+    div rbx
+
+    mov  r10, rax
+    test edx, edx
+    jz   .alnd
+    inc  r10      ;不对齐的兜底
+.alnd:
+;接下来算有多少行
+    mov rax, r10
+    xor edx, edx
+    mov rbx, r11
+
+    div rbx
+
+    mov  r11, rax
+    test rdx, rdx
+    jz   .ok
+    inc  r11
+.ok:
+    pop rbx
+    pop rdx
+    pop rax
+
+;长度计算
+    
+;需要长度=源长+组数-行数+（行数-1）*2+1
+;(srclen+groups+lines-1)
+    lea rdx, [rdx+r10]
+    lea r15, [r11-1]
+    add rdx, r15
+
+    bt rax, 0
+    jc .main
+
+    cmp rdx, r9
+    jbe .main
+
+.error:
+
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+
+    xor rax, rax
+
+    ret;又浪费了一整天写了坨狗屎出来
+
 ;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
 
 
@@ -2047,5 +2465,11 @@ ksignlabel:
 ; 代码破2000行了，但是大部分都是注释，O(∩_∩)O哈哈~
 
 ;2026年10月1日
+
+; 我讨厌字符串格式化
+; 真的服了这烦人玩意
+; 作业啊，我写不完啊
+
+;2026年10月2日
 
 ;到底了，就这么多~
