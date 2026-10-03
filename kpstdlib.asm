@@ -13,6 +13,36 @@
 ;源码可见，仅供免费教育研究和学习
 ;注释以后再补充吧
 
+;这是什么：一个NASM项目（废话）
+;用来干嘛：为了用来写C代码
+;你为啥要看：关我屁事
+;能从里面学到东西吗：能，但是我还没补完注释
+;它可能不像网上其它教程那么模范
+;它更倾向于8086时代的老式写法
+;对于x86-64架构的指令集做出了决策和取舍
+;比起8086少了诸多限制
+;这是初学者版本吗：不是，我建议你先学别的语言或者先去看别的汇编教程
+;这是初学者版本吗：是的，这里几乎可以遇到大部分初学者容易错和迷惑的地方
+;能从中学到什么：很多，看你咋学
+;它标准化吗：从调用约定上来讲基本符合微软x64ABI
+;但是它的写法可能比较诡异
+;看不懂咋办：不看，或者你去问AI
+;是完全手写的吗：是的，可能让AI帮我做了一些参数上的检查，比如我曾经把GetFileSizeEx打错字成GetFileSizeEX
+;我经常让AI帮我看编译和链接报错，辅助查询intel SDM PDF
+;它好用吗：不一定，但是除了win32api封装以外都会返回NULL代表失败
+;NULL是个常量，等于零
+;怎么考虑更新内容的：我需要啥我就写啥
+;（事实上一个月过去了我的日志功能要用的函数都还没写完
+;它能替代CRT吗：现在能做不少事情，但是还不能完全替代
+;为啥要封装系统api：因为和windows.h不一定兼容，为了让我更好记住，为了能方便维护和移植，为了写程序更方便
+;再说你为啥要学汇编：它能让你更好理解代码的工作，以及解决非常多匪夷所思的BUG
+;但是学习汇编对于大多数人来讲并不容易
+;我是例外，我反而写C代码总是出问题，还不会修BUG
+;它性能会比CRT更好吗：不会，差不多，可能某些激进的函数会快一点点点
+;总之你要有一定的编程基础，而且你要能够有耐心去了解8086的指令或者x86的指令才能看懂大部分，注释不是保姆，只会写出来最重要的，容易错的
+;警告：内部函数，未完成函数，永远不能被导出，也不应该被修改，只是为了方便代码复用，用于特定场景下的业务服务
+
+
 ;bash:
 
 ;nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj 
@@ -417,25 +447,34 @@ STD_INPUT_HANDLE      equ -10
 STD_OUTPUT_HANDLE     equ -11
 ; 标准错误句柄
 STD_ERROR_HANDLE      equ -12
+
+
+;代码段
 section .text
 
+;strlen
+;第一个函数？
+;很老套的写法，后面有4个SIMD示例
 kp_strlen_fastcall_win64:
 ;只有一个参数，rcx放字符串起始，返回rax，单位字节    
     xor  rax, rax
+    ;rax=0用来查找\0
     push rdi
     mov  rdi, rcx
     mov  rcx, -1
-    cld
 
-    repne scasb 
+    cld;清除方向标志
+
+    repne scasb;重复，不相等就继续扫描比对al和[rdi]
     or  rcx, rcx
+    ;这个纯纯8086后遗症，如果rcx=0说明没有找到或者刚好落到，但是x64的寄存器很大，所以没有特别的处理
     jz  .nofind
-    not rcx
-    dec rcx
+    not rcx      ;取反
+    dec rcx      ;减一
+    ;这样就能得到长度了，原理是因为二进制特性
     mov rax, rcx
     pop rdi
     ret
-    ; jmp .ret
 
 .nofind:
     xor rax, rax
@@ -443,6 +482,8 @@ kp_strlen_fastcall_win64:
     pop rdi
     ret
 
+;已经废弃了，单纯留在这里留档，附上栈图
+;8086时代函数，当时用来批量输出数字字符串，但是我发现在x64上不好用
 ;！警告：未完成函数，千万不要使用！
 kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 ;子程序，默认已经对齐，而且没有寄存器传递参数
@@ -457,35 +498,35 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     push rax      ;SHADOW 1
     push rbx      ;RET        RBP+8
     push rdx      ;RBP    0   RBP+0
-    push rdi
+    push rdi      ;RBP指向原来RBP的PUSH
 ;保存所有用到的
     ;PREPROCE
 
     xor rsi, rsi
     xor rdi, rdi
 
-    
-
 ;整体循环转化输出
 .lb_tltp:
 
-    mov rax, [rbp+rsi+48]
+    mov rax, [rbp+rsi+48] ;读栈上数字
 ;新增检查负数
     ; test rax, 0x8000000000000000
+    ; 好吧x64不能直接写64位imm除了mov
     ; jz   .np
 ;改成更短的写法
     or  rax, rax
-    jns .np
+    jns .isnotnegative
 ;不是负数就跳过
     mov byte [bu], 45 ;负数符号的ASCII
     inc rdi
 ;负数转正
     neg rax
-.np:
+;标号：不是负数
+.isnotnegative:
     mov  rbx, 10
     push rcx
     xor  rcx, rcx
-;除法循环
+;除法循环，每次除以10得到个位数字大小
 .divlop:
     inc  rcx      ;STACK
     xor  rdx, rdx ;ori_rcx,rcx*rdx
@@ -504,6 +545,7 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 
     pop rdx
     add rdx,       48
+    ;变成ASCII并且写入
     mov [rbx+rdi], dl
     inc rdi
     dec rcx
@@ -546,24 +588,31 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 
 ;待定议程，参数，比如RAX可以说明是否启用有符号，是否启用地址回写，如果启用，地址默认起始RBX，我也不知道64位有没有能够专门隔着写的文字命令，以前我记得可以直接设定方向，间隔，然后放文字就行
 ;现在没有待定了，这个函数被废弃了，现在是x64而不是8086
+;再次声明这个函数被废弃了，当广告看就行（2026年10月3日）
 
+;内部函数，C不能直接用，8086代码移植
 ;单独打印rax，给日志功能用，应该不会破坏任何寄存器
+;破坏RAX返回
 kp_prtnum_frmrax:
 ;默认rax已经赋值
     push rdi
     xor  rdi,       rdi
     or   rax,       rax ;检查负数
-    jns  .np            ;不是负数就跳过
+    jns  .isnotnegative ;不是负数就跳过
     mov  byte [bu], 45  ;负数符号的ASCII
-    inc  rdi
-    neg  rax
-.np:
+    
+    inc rdi
+    neg rax ;负数转正
+
+;不是负数走这里
+.isnotnegative:
     push rsi
     push rcx
     push rdx
     push rbx
     mov  rbx, 10
     xor  rcx, rcx
+;除法循环
 .divlop:
     inc  rcx
     xor  rdx, rdx
@@ -572,18 +621,20 @@ kp_prtnum_frmrax:
     or   rax, rax
     jz   .preprt
     jmp  .divlop
+;打印准备
 .preprt:
     lea rbx, [bu]
-    ;先打印到bu
-.lre:
+    ;先打印到bu，这里加载地址
+;写数字循环
+.loopofrewrite:
     pop rdx
     add rdx,       48
     mov [rbx+rdi], dl
     inc rdi
     dec rcx
-    jnz .lre
+    jnz .loopofrewrite
 
-    ; inc rdi
+    ; inc rdi ; 这个inc不能写
     mov byte [rbx+rdi], 0
 
     lea rax, [bu]
@@ -594,12 +645,15 @@ kp_prtnum_frmrax:
     pop rcx
     pop rsi
     pop rdi
+
     ret
 
 ;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数（为啥这里会有这个）
 ;（这行注释就明明白白写在kp_filetime_to_realtime_frmrax_ret_fastcall_win64函数开头）
+;（其实是移动时候忘了删，当彩蛋吧）（2026年10月3日）
 
-;单独打印rcx
+;单独打印rcx，这下C代码能用的
+;滚木函数，哈哈，这才是最短的一个
 kp_prtnum_frmrcx_fastcall_win64:
     mov rax, rcx
     jmp kp_prtnum_frmrax
@@ -613,18 +667,19 @@ kp_strcpy_fastcall_win64:
     jz .mgd
     or r8,  r8
     jz .mgd
-
     ;据说有空指针
+
     or   rdx, rdx
-    jns  .busu
+    jns  .havesrclen
     push rcx
 
-    call kp_strlen_fastcall_win64
-    mov  rdx, rax
+    call kp_strlen_fastcall_win64 ;第一个函数
+    ;没有破坏寄存器所以能直接用，但是如果用后面的SIMD版本可能会破坏寄存器，要保存
+    mov  rdx, rax                 ;返回值在rax，调用约定
 
     pop rcx
 
-.busu:
+.havesrclen:
 
     cmp rdx, r9
     jae .mgd
@@ -632,18 +687,18 @@ kp_strcpy_fastcall_win64:
     ;不检查rcx是不是0了因为0也没事
     ; push rbp
     ; mov  rbp, rsp
-    ; 用不上了现在
+    ; 栈帧用不上了现在
 
     cld
 
     push rsi
     push rdi
-    ; mov  r9,  r8
-    mov  rsi, rcx
-    mov  rdi, r8
-    cmp  rdx, 15
-    ja   .msq
-    mov  rcx, rdx
+
+    mov rsi, rcx ;源
+    mov rdi, r8  ;目标
+    cmp rdx, 15  ;不同长度的分支
+    ja  .msq
+    mov rcx, rdx
     rep movsb
 
     mov byte [rdi], 0
@@ -653,32 +708,30 @@ kp_strcpy_fastcall_win64:
 .msq:
     mov rcx, rdx
     shr rcx, 3
-    rep movsq
+    rep movsq;老CPU上的movsq比movsb更快，但是实际上所有x64都有SSE2
     mov rcx, rdx
     and rcx, 7
     rep movsb
 
-    mov byte [rdi], 0
-
-    ; jmp .normal
+    mov byte [rdi], 0 ;末尾补0
     
 .normal:
     ; sub rdi, r8
     ; mov rax, rdi
+    ; 注释这样是返回长度，没意义，等于srclen
     mov rax, rdi
     ;返回指针
     pop rdi
     pop rsi
     ret
-    ; jmp .exit
+
 .mgd:
-    xor rax, rax
-.exit:
+    xor rax, rax ;0代表失败，或者长度为0
     ; mov rsp, rbp
     ; pop rbp
     ret
 
-db '少羽牛逼'
+db '少羽牛逼' ;这个是签名，也就是特征，这4个字会被原封不动放进exe里面，以后要检查这个函数直接就是x64dbg里面搜特征就能定位到这里
 
 ;输入rcx，可以用系统提供时间GetSystemTimeAsFileTime
 ;传入参数：rcx放时间由系统提供，1个地址用来返回纯文本的紧凑时间
@@ -686,6 +739,9 @@ db '少羽牛逼'
 ;剩下6个地址分别是年月日时分秒的内存指针
 ;void(imm64,immmem64ptr,mem64addr*6)
 kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
+;当时设计上就有问题，当时只考虑北京时间，而没有考虑一口气做成UTC偏移
+;而且当时也没考虑结构体，所以就很狼狈
+;如果你传空指针的话，程序不会崩溃，只是不会返回东西，是的，当初就没有考虑返回值，因为用不上，或者说我没有想过怎么可能会失败
 ;最大工程的函数我只能说
 
 ; ...STACK_TABLE...
@@ -704,7 +760,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 ; RDI
 
     push rbp
-    mov  rbp, rsp
+    mov  rbp, rsp ;到时候用来get参数
     push rbx
     push rsi
     push rdi
@@ -740,10 +796,10 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov [rbp+24], rdx
     mov [rbp+32], r8
     mov [rbp+40], r9
-    ;已经保存了所有参数
+    ;已经保存了所有参数，前面4个在影子空间
     mov rax,      rcx
 
-    xor rbx, rbx ;这行干嘛用的我也忘了，其实没用
+    xor rbx, rbx ;这行干嘛用的我也忘了，其实没用（对就是没用，留着当彩蛋）（2026年10月3日）
     
     ;修改，但是行为基本不变
     ;让ft=0时候也能正确返回
@@ -762,25 +818,26 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     div rcx
     
     ;rax=天数，rdx=剩余秒数
-    mov [days],      rax
-    mov [seconds],   rdx
-    mov rcx,         days_per_400_years
-    xor rdx,         rdx
+    ;看不懂就去查SDM
+    mov [days],     rax
+    mov [seconds],  rdx
+    mov rcx,        days_per_400_years ;先算有多少完整400年
+    xor rdx,        rdx
     div rcx
-    mov [nboffhys],  rax
-    mov rax,         rdx                ;继续除以100年
-    mov rcx,         days_per_100_years
-    xor rdx,         rdx
+    mov [nboffhys], rax
+    mov rax,        rdx
+    mov rcx,        days_per_100_years ;继续除以100年
+    xor rdx,        rdx
     div rcx
-    mov [nbofohys],  rax
-    mov rax,         rdx
-    mov rcx,         days_per_4_years
-    xor rdx,         rdx
+    mov [nbofohys], rax
+    mov rax,        rdx
+    mov rcx,        days_per_4_years   ;算有多少个4年
+    xor rdx,        rdx
     div rcx
-    mov [nboffoys],  rax
-    mov [tempdays],  rdx
+    mov [nboffoys], rax
+    mov [tempdays], rdx
     ;剩下的天数
-    ;现在先算有没有世纪平年
+    
     imul rax,[nboffhys],400
     mov [tempyears], rax
     imul rax,[nbofohys],100
@@ -818,8 +875,11 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     ;   相等 -> 没跨界；不等 -> 跨界，继续查 400
     ; 绝对年份 = tempyears + 1 + nbofovys（当前周期内已过完整年数）
 
+    ;现在算有没有世纪平年
+
     lea rbx, [mthlep]
     lea rcx, [mthcom]
+    ;VS code里面光标放上去就能知道标号上面的注释（需要插件）
 
     ; cmp    rax, 3
     cmp    r9,  3
@@ -872,7 +932,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
 .leplop:
     inc   rcx
-    ;真的还有人记得rsi已经清零了吗（在开头）
+    ;真的还有人记得rsi已经清零了吗（原来是在开头）
     ;好了现在改成提前清零
     movzx rdx, byte [rbx+rsi]
     inc   rsi
@@ -885,7 +945,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 .edlepsub:    
     ;rax=剩余天数，rcx等于月份
     inc rax
-    ;这里是没过完的一天
+    ;这里是没过完的一天，所以加上
     mov [realdays],  rax
     mov [realmonth], rcx
 
@@ -908,7 +968,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
 ;现在输出返回值
 
-    lea rbx, [date]
+    lea rbx, [date] ;目前默认输出到这里
 
     ;rbx已经做好输出准备
     
@@ -966,7 +1026,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     ;小端序要倒过来写
     ;小更新，现在有了}的结尾
 
-    mov [dlsbur], rcx
+    mov [dlsbur], rcx ;这个是另一个函数的事情的参数
 
 ;r9长度要自己给
     lea  rcx, [date]
@@ -1015,7 +1075,9 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov rax, 3
     mov rdx, 365
     jmp .skipdivn
-db 'This_is_a_sentence.'
+
+db 'This_is_a_sentence.' ;依旧标记
+
 ;我去终于写完了这玩意，日期函数用了我三个星期    
 ;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
 ;这玩意折磨我三个星期（结束于2026年9月13日）
@@ -1035,11 +1097,11 @@ kp_strcpy_enddls_fastcall_win64:
     or   rdx, rdx
     jns  .busu
     push rcx
-    call kp_strlen_fastcall_win64
+    call kp_strlen_fastcall_win64 ;不要随便换成别的strlen，不然你要保存寄存器
     mov  rdx, rax
     pop  rcx
 .busu:   
-    lea r10, [rdx+1]
+    lea r10, [rdx+1] ;检查需要的大小
     cmp r10, r9
     jae .mgd
     ;如果源比目标长就退出
@@ -1060,11 +1122,14 @@ kp_strcpy_enddls_fastcall_win64:
     mov  rcx, rdx
     rep movsb
 
-    ; mov byte [rdi], 0
-    mov ah,    0
-    mov al,    ('$')
+    ; mov byte [rdi], 0 ; 这个是strcpy剩下的，改成了下面的
+    ; mov ah,    0
+    ; mov al,    ('$')
+    mov ax,    0x0024
+    ;一次性写$\0
     mov [rdi], ax
     inc rdi
+    ;现在rdi指向\0
 
     jmp .normal
 
@@ -1100,10 +1165,11 @@ kp_strcpy_enddls_fastcall_win64:
     ; pop rbp
     ret
 
-;替换所有$为自定义ASCII符号
+;替换所有$为自定义ASCII符号，目前限制8个
 ;(源，源长，目标，目标长)
 ;以0结尾的源，源长为负数自动算
 ;源长也是符号替换的数量（相当于）
+;不返回指针，返回当bool，不固定值
 kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     push rbp
     mov  rbp, rsp
@@ -1141,8 +1207,8 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     mov ah, [rsi]
 
     cld
-    repne scasb
-    jne .exit
+    repne scasb;扫描
+    jne .exit ;这里只有rcx=0或者找到了才会执行，如果标志是不相等，说明没找到，因为设置了长度，所以不会越界
 
     mov [rdi-1], ah
     inc rsi
@@ -1169,6 +1235,7 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
 
 
 ;内部函数，仅限日期功能用    
+;破坏RAX作为返回值
 kp_prtnum_frmrax_intime:
 ;默认rax已经赋值
     push rdi
@@ -1183,10 +1250,9 @@ kp_prtnum_frmrax_intime:
     push rcx
     push rdx
     push rbx
-    push rbp
-    mov  rbp, rsp
-    mov  rbx, 10
-    xor  rcx, rcx
+
+    mov rbx, 10
+    xor rcx, rcx
 .divlop:
     inc  rcx
     xor  rdx, rdx
@@ -1213,10 +1279,10 @@ kp_prtnum_frmrax_intime:
 ;数据处理，给日期函数用来对齐
 ;如果rsi不等于0就保留2位
     ; mov  rsi,   [rbp+32]
-    or   rsi,   rsi
+    test rsi,   rsi
     jz   .sk
     mov  ax,    [rbx]
-    or   ah,    ah
+    test ah,    ah
     jnz  .sk
     xchg ah,    al
     mov  al,    ('0')
@@ -1231,7 +1297,6 @@ kp_prtnum_frmrax_intime:
     lea rax, [bu]
     ;返回地址
 
-    pop rbp
     pop rbx
     pop rdx
     pop rcx
@@ -1246,37 +1311,42 @@ kp_prtnum_frmrax_intime:
 kp_strend_fastcall_win64:
 
     ;检查空指针和0长度
-    or rcx, rcx
-    jz .nullet
-    or r8,  r8
-    jz .nullet
-    or r9,  r9
-    jz .nullet
-    or rdx, rdx
-    jz .nullet
+    test rcx, rcx
+    jz   .nullet
+    test r8,  r8
+    jz   .nullet
+    test r9,  r9
+    jz   .nullet
+    test rdx, rdx
+    jz   .nullet
 
     ;正片开始
 
-    mov  r10, rcx
-    mov  rcx, r8
+    mov r10, rcx ; 备份源指针
+    mov rcx, r8  ; rcx = dst，给内部 strlen 用
+    
     call kp_strlenled_inside
+    ; 返回：rax = 目标末尾\0指针，rcx = 目标当前长度
 
-    sub rcx, r9
-    neg rcx
-    js  .nullet
+    sub rcx, r9 ; 当前长度 - 总容量
+    neg rcx     ; 取反，得到剩余空间
+    js  .nullet ; 如果为负，说明目标空间已满，直接跑路
 
     mov r9,  rcx
     mov rcx, r10
 
+;神秘标号
 .noauto:   
 
     ;现在可以开始复制字符串
     
-    mov  r8, rax
+    mov r8, rax ; r8 = 目标末尾的 \0 地址
+    
     call kp_strcpy_fastcall_win64
     
     ret
 
+;空指针和长度不够退出
 .nullet:
     xor rax, rax
     ret
@@ -1309,6 +1379,7 @@ kp_strled_fastcall_win64:
     ret
 
 ;内部函数，仅供内部使用
+;破坏rax，rcx，分别返回长度和末尾
 kp_strlenled_inside:
 ;只有一个参数，rcx放字符串起始，返回rax指向\0，rcx返回长度，失败均返回0
     xor  rax, rax
@@ -1361,15 +1432,15 @@ kp_win32api_ezutf8t16le_fastcall_win64:
 
     ret
 
-;时间函数的简短输入版本
+;时间函数的简短输入版本，依旧当初没考虑返回值
 ;void(filetime,快速字符串地址,结构体地址起始,禁用北京时间
 ;关于禁用北京时间（0的话就不管，如果是非0的话就给UTC时间）
 kp_timefmt_fastcall_win64:    
 
     adod
 
-    or rdx, rdx
-    jz .nodx
+    test rdx, rdx
+    jz   .nodx    ;给一个没用的8字节，防崩
 .oudx:
 
     push rbx
@@ -1378,10 +1449,11 @@ kp_timefmt_fastcall_win64:
     push rdx
     mov  rbx, rcx
 
-    or  r9,  r9
-    jz  .enboeg
-    mov r10, unboeg
-    sub rcx, r10
+    test r9,  r9     ;检查时间标志
+    jz   .enboeg
+    mov  r10, unboeg ;回退UTC时间
+    sub  rcx, r10
+;启用北京时间直接跳
 .enboeg:
 
     or  r8, r8
@@ -1392,6 +1464,7 @@ kp_timefmt_fastcall_win64:
 
     adod
 
+    ;传参大队
     lea  r10, [r8+40]
     push r10
     lea  r10, [r8+32]
@@ -1402,7 +1475,9 @@ kp_timefmt_fastcall_win64:
     push r10
     lea  r9,  [r8+8]
     
-    sub  rsp, 32
+    ;影子空间
+    sub rsp, 32
+    
     call kp_filetime_to_realtime_frmrax_ret_fastcall_win64
 
     pdod
@@ -1412,10 +1487,11 @@ kp_timefmt_fastcall_win64:
     ;前面有个push rdx
     pop  rdi
     pop  r9
-    or   r9,  r9
+    test   r9,  r9
     jz   .nore
-    or   rdi, rdi
+    test   rdi, rdi
     jz   .nore
+    ;接下来是重新覆写回去真正的filetime
     mov  rdi, [rdi]
     mov  al,  ('{')
     mov  rcx, -1
@@ -1456,7 +1532,7 @@ kp_timefmt_fastcall_win64:
     jmp .oudx
 
 ;替换一个$为自定义ASCII符号
-;(目标，字符放dl)
+;(目标，字符放dl)，破坏rax，rcx
 ;没有任何检查，内部函数
 kp_replace_single_dollar_symbol:
     
@@ -2146,20 +2222,14 @@ kp_text_format_divide_fastcall_win64:
     jz   .error
     jns  .havestrlen
     push rcx
-    push rdx
     push r8
     push r9
-    push r10
-    push r11
     adod
     sub  rsp, 32
     call kp_sse2_strlen_fastcall_win64
     pdod
-    pop  r11
-    pop  r10
     pop  r9
     pop  r8
-    pop  rdx
     pop  rcx
     mov  rdx, rax
 .havestrlen:
@@ -2183,7 +2253,52 @@ kp_text_format_divide_fastcall_win64:
 
 .chk:
 
-    jmp .chklen
+    push rax
+    push rdx
+    push rbx
+
+    mov rax, rdx
+    xor edx, edx
+    mov rbx, r10
+
+    div rbx
+
+    mov  r10, rax
+    test edx, edx
+    jz   .alnd
+    inc  r10      ;不对齐的兜底
+.alnd:
+;接下来算有多少行
+    mov rax, r10
+    xor edx, edx
+    mov rbx, r11
+
+    div rbx
+
+    mov  r11, rax
+    test rdx, rdx
+    jz   .ok
+    inc  r11
+.ok:
+    pop rbx
+    pop rdx
+    pop rax
+
+;长度计算
+    
+;需要长度=源长+组数-行数+（行数-1）*2+1
+;(srclen+groups+lines-1)
+    lea rdx, [rdx+r10]
+    lea r15, [r11-1]
+    add rdx, r15
+
+    bt rax, 0
+    jc .main
+
+    cmp rdx, r9
+    jbe .main
+
+    jmp .error
 
 ;代码主体，两个
 ;分别为有换行和没有
@@ -2232,7 +2347,7 @@ kp_text_format_divide_fastcall_win64:
 .last:
     lea  rax, [r11-1]
     mov  r15, r13
-    imul rax,r15
+    imul rax, r15
     neg  rax
     add  rax, r10
     ;现在rax就是剩余组数
@@ -2251,14 +2366,14 @@ kp_text_format_divide_fastcall_win64:
     jnz  .lastloop
 
     .reallast:
-    mov rax,        r10
-    dec rax
-    imul rax,r12
-    mov r15,        r14
-    sub r15,        rax
-    mov rcx,        r15
+    mov  rax,        r10
+    dec  rax
+    imul rax,        r12
+    mov  r15,        r14
+    sub  r15,        rax
+    mov  rcx,        r15
     rep movsb
-    mov byte [rdi], 0
+    mov  byte [rdi], 0
     
     mov rax, rdi
     pop rsi
@@ -2286,17 +2401,17 @@ kp_text_format_divide_fastcall_win64:
     jnz  .disbig
 
 .dislast:
-    mov rax,        r10
-    dec rax
-    imul rax,r12
-    mov r15,        r14
-    sub r15,        rax
-    mov rcx,        r15
+    mov  rax,        r10
+    dec  rax
+    imul rax,        r12
+    mov  r15,        r14
+    sub  r15,        rax
+    mov  rcx,        r15
     rep movsb
-    mov byte [rdi], 0
-    mov rax,        rdi
-    pop rsi
-    pop rdi
+    mov  byte [rdi], 0
+    mov  rax,        rdi
+    pop  rsi
+    pop  rdi
 
 .normalexit:
 
@@ -2306,52 +2421,6 @@ kp_text_format_divide_fastcall_win64:
     pop r12
     
     ret
-.chklen:
-
-    push rax
-    push rdx
-    push rbx
-
-    mov rax, rdx
-    xor edx, edx
-    mov rbx, r10
-
-    div rbx
-
-    mov  r10, rax
-    test edx, edx
-    jz   .alnd
-    inc  r10      ;不对齐的兜底
-.alnd:
-;接下来算有多少行
-    mov rax, r10
-    xor edx, edx
-    mov rbx, r11
-
-    div rbx
-
-    mov  r11, rax
-    test rdx, rdx
-    jz   .ok
-    inc  r11
-.ok:
-    pop rbx
-    pop rdx
-    pop rax
-
-;长度计算
-    
-;需要长度=源长+组数-行数+（行数-1）*2+1
-;(srclen+groups+lines-1)
-    lea rdx, [rdx+r10]
-    lea r15, [r11-1]
-    add rdx, r15
-
-    bt rax, 0
-    jc .main
-
-    cmp rdx, r9
-    jbe .main
 
 .error:
 
@@ -2371,7 +2440,7 @@ kp_text_format_divide_fastcall_win64:
 
 WARNING_SIGN:
 
-section .kpstdlib
+section kpstdlib
 
 A_UNAVAILABLE_SIGN:
 
