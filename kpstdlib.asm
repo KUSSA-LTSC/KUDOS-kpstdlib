@@ -42,7 +42,6 @@
 ;总之你要有一定的编程基础，而且你要能够有耐心去了解8086的指令或者x86的指令才能看懂大部分，注释不是保姆，只会写出来最重要的，容易错的
 ;警告：内部函数，未完成函数，永远不能被导出，也不应该被修改，只是为了方便代码复用，用于特定场景下的业务服务
 
-
 ;bash:
 
 ;nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj 
@@ -77,7 +76,15 @@
 ;
 ; 配置文件如不含源代码、脚本、二进制或可执行逻辑，可以公开共享。
 
-;代码往下
+;关于许可证：
+
+; 这是个倾向于教育的许可证，排斥商业化
+; 不是一个开源许可证，但是它可以比较好的方便我以后用别人的闭源库
+; 当然，如果以后有机会，而且它本身可以独立实现所有除了系统功能以外的所有函数的时候，库的许可证很可能重新变回 GPLv3
+
+;当然，想要不依赖第三方库、闭源库实现所有功能很难，我不可能学会所有东西
+
+;……代码往下……
 
 ; %include 'third.inc'
 %include 'kmarco.inc'
@@ -103,7 +110,7 @@
 ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
 ; All rights reserved.
 ;
-; SPDX-License-Identifier: LicenseRef-scancode-kapivara-sal-1.0
+; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
 
 ; %macro adod 0
 ;     push rbp
@@ -145,6 +152,9 @@ default rel
 ;为了方便调试和写，寄存器非必要全用r64
 ;标签都是瞎几把写的因为我英文不好
 
+; bu, date, dlsbur, dust, wasteimm 是全局静态缓冲区。
+; 使用了这些地址的函数绝对、绝对、绝对不能在多线程中并发调用！
+
 global  bu
 ; global  realseconds
 ; global  realminutes
@@ -152,8 +162,8 @@ global  bu
 ; global  realdays
 ; global  realmonth
 ; global  realyears
+; 这个dlsbur可以自定义符号，限制8个ascii
 global  dlsbur
-; 这个可以自定义符号
 ; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
 global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
 global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
@@ -165,13 +175,14 @@ global  kp_win32api_createfile_w_fastcall_win64
 global  kp_win32api_ezutf8t16le_fastcall_win64
 global  kp_win32api_write_file_fastcall_win64
 global  kp_win32api_read_file_fastcall_win64
-global  kp_win32api_msgbox_w_fastcall_win64
 global  kp_text_format_divide_fastcall_win64
+global  kp_text_utf8t16le_main_fastcall_win64
+global  kp_win32api_msgbox_w_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
 global  kp_sse2_strlen_fastcall_win64
-global  kp_strlen_simd_fastcall_win64
+global  kp_simd_strlen_fastcall_win64
 global  kp_sse_strlen_fastcall_win64
 global  kp_hex2ascii_fastcall_win64
 global  kp_ascii2hex_fastcall_win64
@@ -207,6 +218,8 @@ section .data
     datelen equ (date_end - date)
     
     wasteimm dq 0
+
+    orirsi dq 0
 
     days        dq 0 ;总天数
     seconds     dq 0 ;总秒数
@@ -252,6 +265,7 @@ section .data
     dlsbur_len equ (dlsbur_end-dlsbur)
 
     align 16
+    ;神人hex2ascii表
     hex2ascii_xlatable db '0123456789ABCDEF'
 
     align 16
@@ -1285,6 +1299,7 @@ kp_prtnum_frmrax_intime:
     test ah,    ah
     jnz  .sk
     xchg ah,    al
+    ;交换一位数字和'0'
     mov  al,    ('0')
     mov  [rbx], ax
     xor  rax,   rax
@@ -1487,9 +1502,9 @@ kp_timefmt_fastcall_win64:
     ;前面有个push rdx
     pop  rdi
     pop  r9
-    test   r9,  r9
+    test r9,  r9
     jz   .nore
-    test   rdi, rdi
+    test rdi, rdi
     jz   .nore
     ;接下来是重新覆写回去真正的filetime
     mov  rdi, [rdi]
@@ -1549,7 +1564,8 @@ kp_replace_single_dollar_symbol:
 ;测试函数，SIMD版本的strlen
 ;rcx放字符串起始
 ;真就飞车还要安全带啊，烦死了
-kp_strlen_simd_fastcall_win64:
+kp_simd_strlen_fastcall_win64:
+    ;因为用movdqu不对齐版本所以要不停检查页边界
 
     mov r9,  16
     xor rdx, rdx
@@ -1560,9 +1576,10 @@ kp_strlen_simd_fastcall_win64:
 
     ;检查页边界
     mov r10, rcx
-    and r10, 0xFFF
-    cmp r10, 4080
+    and r10, 0xFFF ;取高12位
+    cmp r10, 4080  ;和最后一页起始相比较
     ja  .slow
+    ;如果快到页边界就换到慢速分支
 
     movdqu   xmm0, [rcx]
     pcmpeqb  xmm0, xmm1
@@ -1612,6 +1629,8 @@ kp_strlen_simd_fastcall_win64:
 ;注释的话留给两万年后吧
 ;非常的巧妙以至于改一个字母都可能完全奔溃
 kp_sse_strlen_fastcall_win64:
+;这个注释是真不想写，一个寄存器当4变量个用
+;没有掩码合并，一次只能处理16字节
 
     push rdi
 
@@ -1679,6 +1698,7 @@ kp_sse_strlen_fastcall_win64:
 ;建议在支持ERMSB的CPU上用
 ;(src,srclen,dst,dstlen)
 kp_ermsb_fastcall_win64:
+;这种函数有啥意义吗，只是为了C里面能用
 
     cld
 
@@ -1728,7 +1748,7 @@ kp_hex2ascii_fastcall_win64:
 
     xchg rcx, rdx
 
-    lea rbx, [hex2ascii_xlatable]
+    lea rbx, [hex2ascii_xlatable] ;查表
     
     mov rdi, r8
     mov rsi, rdx
@@ -1742,8 +1762,8 @@ kp_hex2ascii_fastcall_win64:
     mov r9b, al
     shr al,  4
     
-    xlat
-    stosb
+    xlat;查表
+    stosb;存入
 
     mov al, r9b
     and al, 0xF
@@ -1798,24 +1818,24 @@ kp_ascii2hex_fastcall_win64:
     mov rcx, rdx
     shr rcx, 1
 
-    lea rbx, [ascii2hex_xlatable]
+    lea rbx, [ascii2hex_xlatable] ;查表
 
 .xlatloop:
 
-    lodsb
+    lodsb;取出
 
-    xlat
+    xlat;查表
 
-    mov r9b, al
+    mov r9b, al ;暂存
     
-    lodsb
+    lodsb;取出
 
-    xlat
+    xlat;查表
 
-    shl r9b, 4
-    or  al,  r9b
+    shl r9b, 4   ;写回高位
+    or  al,  r9b ;合并
 
-    stosb
+    stosb;储存
 
     dec rcx
     jnz .xlatloop
@@ -1841,7 +1861,7 @@ kp_sse2_strlen_fastcall_win64:
 
     mov rdx, rcx
     mov r9,  rcx
-    and rdx, -16
+    and rdx, -16 ;暴力对齐
     sub rcx, rdx
 
     pxor     xmm1, xmm1
@@ -1849,14 +1869,14 @@ kp_sse2_strlen_fastcall_win64:
     pcmpeqb  xmm0, xmm1
     pmovmskb r8d,  xmm0
 
-    shr r8d, cl
-    jnz .found
+    shr r8d, cl ;除去无用掩码
+    jnz .found  ;不为零说明找到
 
     test rdx, 16
     ;检查对齐32位
-    jz   .ssego
+    jz   .ssego  ;如果第四位有，说明加上十六直接就是对齐32字节
 
-    add rdx, 16
+    add rdx, 16 ;不然就还要单独处理16字节，再对齐
 
     movdqa   xmm0, [rdx]
     pcmpeqb  xmm0, xmm1
@@ -1865,6 +1885,7 @@ kp_sse2_strlen_fastcall_win64:
     test r8d, r8d
     jnz  .gofind
 
+;准备工作
 .ssego:
     add rdx, 16
 .sseloop:
@@ -1876,8 +1897,8 @@ kp_sse2_strlen_fastcall_win64:
     pmovmskb r8d,  xmm0
     pmovmskb eax,  xmm2
     
-    shl  eax, 16
-    or   r8d, eax
+    shl  eax, 16   ;掩码高位
+    or   r8d, eax  ;合并掩码
     test r8d, r8d
     jnz  .ssefound
 
@@ -1906,7 +1927,7 @@ kp_sse2_strlen_fastcall_win64:
     add rax, rdx
     ret
 
-;爆改avx2版本
+;爆改avx2版本，和sse2版本差不多，注释就懒得啦
 ;rcx=src
 kp_avx2_strlen_fastcall_win64:
 
@@ -2184,6 +2205,7 @@ kp_win32api_virtual_free_fastcall_win64:
 ;（源，源长，目标，目标长，多少个字节一组，一行多少组）
 ;srclen=0直接退出，失败返回NULL，成功返回指向目标末尾\0指针
 kp_text_format_divide_fastcall_win64:
+;这种注释我宣布放生至少两个月
 
 ;检查srclen和dstlen
 
@@ -2433,10 +2455,579 @@ kp_text_format_divide_fastcall_win64:
 
     ret;又浪费了一整天写了坨狗屎出来
 
+;utf8解码单字符函数
+;默认已经设置好了rsi
+;rax=0失败，成功返回字符码点
+;破坏rax，rdx
+;自动减少rcx
+kp_text_utf8_single_symbol_decode_inside:
+
+    xor eax, eax
+    xor edx, edx
+    mov r10, rsi
+
+    lodsb
+
+    bt ax, 7
+    
+    jc  .notascii
+    ;ascii字符直接出
+    dec rcx
+    ret
+
+.notascii:
+
+
+    bt  ax, 6
+    jnc .broken ;如果是10开头说明是断的
+
+    bt  ax, 5
+    ;如果是110开头说明是2字节
+    jnc .word
+
+    bt  ax, 4
+    ;如果是1110开头说明是3字节
+    jnc .tri
+
+    ;好像utf8最高只有4字节，所以直接进主分支
+    jmp .double
+
+;2字节
+.word:
+
+    sub rcx, 2
+    js  .werr
+    ;先处理第一个字节
+    mov dl,  al ;110XXXXX
+    and dl,  31 ; 0b11111
+    shl dx,  6
+    lodsb
+    bt  ax,  7
+    jnc .fail
+    bt  ax,  6
+    jc  .fail
+    and al,  63
+    or  ax,  dx
+    jmp .check
+    
+;3字节
+.tri:
+
+    sub rcx, 3
+    js  .terr
+    mov dl,  al
+    and dl,  15
+    shl edx, 12
+    lodsb
+    bt  ax,  7
+    jnc .fail
+    bt  ax,  6
+    jc  .fail
+    and al,  63
+    shl ax,  6
+    or  edx, eax
+    lodsb
+    bt  ax,  7
+    jnc .fail
+    bt  ax,  6
+    jc  .fail
+    and ax,  63
+    or  eax, edx
+    jmp .check
+
+;4字节
+.double:
+
+    sub rcx, 4
+    js  .derr
+    mov dl,  al
+    and dl,  7
+    shl edx, 18
+    lodsb
+    bt  ax,  7
+    jnc .fail
+    bt  ax,  6
+    jc  .fail
+    and al,  63
+    shl eax, 12
+    or  edx, eax
+    xor eax, eax
+    lodsb
+    bt  ax,  7
+    jnc .fail
+    bt  ax,  6
+    jc  .fail
+    and al,  63
+    shl ax,  6
+    or  dx,  ax
+    lodsb
+    bt  ax,  7
+    jnc .fail
+    bt  ax,  6
+    jc  .fail
+    and ax,  63
+    or  eax, edx
+
+.check:
+;rax是已经解码的
+
+    test rax, rax
+    jz   .fail
+
+    cmp rax, 0x10FFFF
+    ja  .fail
+
+    cmp rax, 0xD800
+    jb  .normalexit
+    cmp rax, 0xE000
+    jb  .fail
+
+.normalexit:
+    ret
+
+.fail:
+    mov rsi,       r10
+    mov word [r8], 0xFFFF
+    xor rax,       rax
+    ret
+
+.broken:
+    dec rsi
+    xor eax, eax
+    ret
+
+.werr:
+    sub rsi, 2
+    xor eax, eax
+    ret
+
+.terr:
+    sub rsi, 3
+    xor eax, eax
+    ret
+
+.derr:
+    sub rsi, 4
+    xor eax, eax
+    ret
+
+;utf8t16le主函数
+;（源，源长，目标，目标长）
+;源长是负数自动算，目标长必须是源长的2倍及以上
+;返回值：错误（空指针，长度不够）为0，
+;字符错误：r8指向的word为FFFF
+kp_text_utf8t16le_main_fastcall_win64:
+;注意：内部函数破坏r10，如果需要用，call子函数前要保存
+
+    test rcx, rcx
+    jz   .npointer
+    test r8,  r8
+    jz   .npointer
+
+    test r9, r9
+    jz   .npointer
+
+    test rdx, rdx
+    jz   .npointer
+    jns  .havestrlen
+
+    push rcx
+    push r8
+    push r9
+
+    adod
+
+    sub  rsp, 32
+    ;写了不用白不用
+    call kp_avx2_strlen_fastcall_win64
+
+    pdod
+
+    pop r9
+    pop r8
+    pop rcx
+
+    mov rdx, rax
+
+.havestrlen:
+
+    lea rax, [rdx+rdx+2]
+    cmp rax, r9
+    ja  .npointer
+
+.prepare:
+
+    push rsi
+    push rdi
+
+    mov rsi, rcx
+    mov al,  [rsi+rdx]
+    mov rdi, r8
+
+    bt  ax, 7
+    jnc .bthept
+    bt  ax, 6
+    jnc .error
+
+.bthept:
+    cld
+    mov  rcx, rdx
+    ;rdx应该用不上了
+    .main:
+    ;现在rcx等于字节数
+    call kp_text_utf8_single_symbol_decode_inside
+    test rax, rax
+    jz   .error
+    cmp  rax, 0xFFFF
+    ja   .pair
+    stosw
+    test rcx, rcx
+    jnz  .main
+
+.exit:
+    xor eax, eax
+    stosw
+    mov rax, rdi
+    pop rdi
+    pop rsi
+    ret
+
+;代理对
+.pair:
+    sub  eax, 0x10000
+    mov  edx, eax
+    shr  eax, 10
+    and  edx, 0x3FF
+    add  eax, 0xD800
+    add  edx, 0xDC00
+    stosw
+    mov  eax, edx
+    stosw
+    test rcx, rcx
+    jnz  .main
+    jmp  .exit
+
+.error:
+
+    pop rdi
+    pop rsi
+
+    xor rax, rax
+
+    ret
+
+;空指针，空城计，不够大返回
+.npointer:
+    xor rax, rax
+    ret
+
+
+;fmt函数重置版本
+;（原filetime，结构体指针，标志位，UTC偏移-秒）
+;标志：bit0是否启用UTC偏移，bit1启用毫秒，bit2启用微秒
+;结构体unsigned long long，返回纯数字而不是文本
+;（年，月，日，时，分，秒，毫秒，微秒）
+;48~64字节，毫秒和微秒需要通过标志位启用
+;默认是UTC时间，如果需要北京时间，需要加上偏移
+kp_improved_filetime_to_realtime_calc_fastcall_win64:
+
+    ;空指针检查
+    test rdx, rdx
+    jz   .null
+
+    push rbp
+    mov  rbp, rsp
+    push rbx
+    push rsi
+    
+    mov [rbp+16], rcx
+    ; mov [rbp+24], rdx
+    mov [rbp+32], r8
+
+    mov r11, rdx
+    ;保存原来的结构体指针
+    mov rax, rcx
+    xor rdx, rdx
+    mov rcx, 10000000
+
+    div rcx
+
+    mov [rbp+24], rdx
+    ;保存subticks
+
+    test r8,  1
+    je   .nooffset
+    add  rax, r9
+
+.nooffset:
+
+    lea rbx, [rbp-128]
+    ;rax等于总秒数
+    xor rdx, rdx
+
+    mov rcx, aoeg
+    add rax, rcx
+
+    mov rcx, seconds_per_day
+
+    div rcx
+    
+    ;rax=天数，rdx=剩余秒数
+
+    mov [rbx],    rax
+    mov [rbx+8],  rdx
+    mov rcx,      days_per_400_years ;先算有多少完整400年
+    xor rdx,      rdx
+    div rcx
+    mov [rbx+16], rax
+    mov rax,      rdx
+    mov rcx,      days_per_100_years ;继续除以100年
+    xor rdx,      rdx
+    div rcx
+    mov [rbx+24], rax
+    mov rax,      rdx
+    mov rcx,      days_per_4_years   ;算有多少个4年
+    xor rdx,      rdx
+    div rcx
+    mov [rbx+32], rax
+    mov [rbx+40], rdx
+    ;剩下的天数
+    
+    imul rax,[rbx+16],400
+    mov [rbx+48], rax
+    imul rax,[rbx+24],100
+    add [rbx+48], rax
+    imul rax,[rbx+32],4
+    add [rbx+48], rax
+    ;现在所有除了不到4年的部分已经算完了
+
+    ;先比较闰年必要
+    mov rax, [rbx+40]
+    cmp rax, 1460
+    je  .skipdivy
+    ;这个标号在后面
+    mov rcx, 365
+    xor rdx, rdx
+    div rcx
+
+;1460天直接传送门走这里    
+.skipdivn:    
+    
+    ;保存剩余年数和天数
+    mov [rbx+56], rax
+    mov [rbx+64], rdx
+    mov r9,       rax
+    inc rax
+    add rax,      [rbx+48]
+    mov [r11],    rax
+
+    ; 被AI气死了给AI写的注释
+    ; tempyears = 绝对年份-1 - ((绝对年份-1) mod 4)
+    ; = 当前4年周期起点 - 1（不是绝对年份！）
+    ; 例：2000 -> 1996，2001 -> 2000，1900 -> 1896
+    ; 用途：拿 tempyears 和 tempyears+4 比 /100、/400
+    ;   相等 -> 没跨界；不等 -> 跨界，继续查 400
+    ; 绝对年份 = tempyears + 1 + nbofovys（当前周期内已过完整年数）
+
+    ;现在算有没有世纪平年
+
+    lea r10, [mthlep]
+    lea rcx, [mthcom]
+    ;VS code里面光标放上去就能知道标号上面的注释（需要插件）
+
+    ; cmp    rax, 3
+    cmp    r9,  3
+    cmovne r10, rcx
+    jne    .lepsub
+
+    ;剩下就要考虑闰年
+    mov rax, [rbx+48]
+    mov r9,  rax
+    ;先复制一份rax，r9就是rax的原来tempyears
+    mov rcx, 100
+    xor rdx, rdx
+    div rcx
+    mov r8,  rax
+    ;保存第一次结果
+    mov rax, r9
+    add rax, 4
+    xor rdx, rdx
+    div rcx
+    cmp rax, r8
+    ;与第一次结果比较
+    ;这里还是闰年表
+    je  .lepsub
+    ;不相等说明有世纪年
+    ;现在检查有没有400年闰年
+    mov rcx, 400
+    xor rdx, rdx
+    mov rax, r9
+    div rcx
+    mov r8,  rax
+    ;保存第一次结果
+    xor rdx, rdx
+    mov rax, r9
+    add rax, 4
+    div rcx
+    cmp rax, r8
+    ;比较，相等说明不是400年，而是世纪平年
+
+    lea   rcx, [mthcom]
+    cmove r10, rcx
+
+;代码复用这一块
+;算月份的减法
+;这个期待rax等于多出来的天数，已经下面初始化有
+
+    .lepsub:
+    mov rax, [rbx+64]
+    xor rcx, rcx
+    xor rsi, rsi
+
+.leplop:
+    inc   rcx
+    ;真的还有人记得rsi已经清零了吗（原来是在开头）
+    ;好了现在改成提前清零
+    movzx rdx, byte [rbx+rsi]
+    inc   rsi
+    cmp   rax, rdx
+    
+    jb  .edlepsub
+    sub rax, rdx
+    jmp .leplop
+
+.edlepsub:    
+    ;rax=剩余天数，rcx等于月份
+    inc rax
+    ;这里是没过完的一天，所以加上
+    mov [r11+16], rax
+    mov [r11+8],  rcx
+
+;至此年月日已经算完了，接下来是时分秒  
+    mov rax, [rbx+8]
+    xor rdx, rdx
+    mov rcx, 3600
+    div rcx
+
+    mov [r11+24], rax
+    
+    ;现在rdx的剩余秒数给到rax
+    xchg rax, rdx
+    xor  rdx, rdx
+    mov  rcx, 60
+    div  rcx
+
+    mov [r11+32], rax
+    mov [r11+40], rdx
+
+    mov r8, [rbp+32]
+    ;恢复标志位
+    
+    mov rax, [rbp+24]
+    ;取得subticks
+    mov ecx, 10000
+    xor edx, edx
+    
+    div rcx
+
+    bt  r8, 1
+    jnc .exit
+
+    mov [r11+48], rax
+    ;毫秒
+
+    bt  r8, 2
+    jnc .exit
+    
+    mov rax, rdx
+    xor edx, edx
+    mov ecx, 10
+
+    div rcx
+
+    mov [r11+56], rax
+
+.exit:
+
+    mov rax, [rbp+16]
+
+    pop rsi
+    pop rbx
+    pop rbp
+
+    ret
+
+
+
+    ;这一部分的real地址被弃用了
+
+    ; [rbx + 128]  realus       
+    ; [rbx + 120]  realms         
+    ; [rbx + 112]  realseconds    
+    ; [rbx + 104]  realminutes    
+    ; [rbx + 96]   realhours      
+    ; [rbx + 88]   realdays       
+    ; [rbx + 80]   realmonth      
+    ; [rbx + 72]   realyears
+
+    ; r11指向结构体！ 
+
+    ; [rbx + 64]   overdays       
+    ; [rbx + 56]   nbofovys       
+    ; [rbx + 48]   tempyears      
+    ; [rbx + 40]   tempdays       
+    ; [rbx + 32]   nboffoys       
+    ; [rbx + 24]   nbofohys       
+    ; [rbx + 16]   nboffhys       
+    ; [rbx + 8]    seconds        
+    ; [rbx + 0]    days 
+
+
+
+;1460天特殊处理标号
+.skipdivy:
+    mov rax, 3
+    mov rdx, 365
+    jmp .skipdivn
+
+;Playing:《真昼の空の月》.mp3
+;没想到今天就重制了这坨狗屎（2026年10月4日）
+;代码回收这一块
+
+;空指针直接返回
+.null:
+    xor rax, rax
+    ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ;   注意：  代码段结束（我真服了这nasm没有结束标志老是搞错）
-
-
-
 
 WARNING_SIGN:
 
@@ -2540,5 +3131,15 @@ ksignlabel:
 ; 作业啊，我写不完啊
 
 ;2026年10月2日
+
+; 补充了一些注释，并且因为身体不适不想写作业
+
+;2026年10月3日
+
+; 重大更新：我把filetime_to_realtime坨狗屎重写啦（好耶）
+; 但是我只重写了计算部分，并且改变了部分行为，所以我给了这重制函数一个新的标号
+; 修复了许多未知问题
+
+;2026年10月4日
 
 ;到底了，就这么多~
