@@ -470,9 +470,10 @@ STD_ERROR_HANDLE      equ -12
 ;代码段
 section .text
 
-;strlen
 ;第一个函数？
 ;很老套的写法，后面有4个SIMD示例
+;警告，这种早期函数，用的8086写法，通常会默认保留所有寄存器，是的，所有，除了返回值以外的，如果你修改了这函数，那么它后面所有使用了它的函数，寄存器都可能被破坏，你需要一一检查，我建议不要修改
+;但是这个是破坏了rcx的，而且没有检查空指针
 kp_strlen_fastcall_win64:
 ;只有一个参数，rcx放字符串起始，返回rax，单位字节    
     xor  rax, rax
@@ -484,16 +485,16 @@ kp_strlen_fastcall_win64:
     cld;清除方向标志
 
     repne scasb;重复，不相等就继续扫描比对al和[rdi]
-    or  rcx, rcx
+    test rcx, rcx
     ;这个纯纯8086后遗症，如果rcx=0说明没有找到或者刚好落到，但是x64的寄存器很大，所以没有特别的处理
-    jz  .nofind
-    not rcx      ;取反
-    dec rcx      ;减一
+    jz   .nofind
+    not  rcx      ;取反
+    dec  rcx      ;减一
     ;这样就能得到长度了，原理是因为二进制特性
-    mov rax, rcx
-    pop rdi
+    mov  rax, rcx
+    pop  rdi
     ret
-
+;这种简单的注释后面基本没了，通常只有健忘和容易错的注释
 .nofind:
     xor rax, rax
 .ret:
@@ -1863,6 +1864,9 @@ kp_ascii2hex_fastcall_win64:
 ;rcx=src
 kp_sse2_strlen_fastcall_win64:
 
+    test rcx, rcx
+    jz   .np
+
     mov rdx, rcx
     mov r9,  rcx
     and rdx, -16 ;暴力对齐
@@ -1931,9 +1935,16 @@ kp_sse2_strlen_fastcall_win64:
     add rax, rdx
     ret
 
+.np:
+    xor eax, eax
+    ret
+
 ;爆改avx2版本，和sse2版本差不多，注释就懒得啦
 ;rcx=src
 kp_avx2_strlen_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
 
     mov rdx, rcx
     mov r9,  rcx
@@ -2000,6 +2011,10 @@ kp_avx2_strlen_fastcall_win64:
     vzeroupper
     sub   rdx, r9
     add   rax, rdx
+    ret
+
+.np:
+    xor eax, eax
     ret
 
 ;封装CreateFileW，返回值按照api的来，但是失败为0
@@ -2765,6 +2780,7 @@ kp_improved_filetime_to_realtime_calc_fastcall_win64:
 
 .nooffset:
 
+    ;不用怕大胆减，有栈页保护
     lea rbx, [rbp-128]
     ;rax等于总秒数
     xor rdx, rdx
@@ -3003,13 +3019,166 @@ kp_improved_filetime_to_realtime_calc_fastcall_win64:
     xor rax, rax
     ret
 
+;查找第一个字符
+;（留空，源，源长，单字节字符）单位字节
+;长度给负数自动算，但是要保证0结尾
+kp_strchr_fastcall_win64:
 
+    test rdx, rdx
+    jz   .np
 
+    mov  rcx, rdx
+    test r9b, r9b
+    ;来都来了
+    jz   kp_sse2_strlen_fastcall_win64
 
+    test r8, r8
+    jz   .np
+    jns  .havelen
+    
+    call kp_strlen_fastcall_win64
+    mov  r8, rax
 
+.havelen:
 
+    mov rcx, r8
+    mov al,  r9b
+    mov r9,  rdx
 
+    push rdi
+    mov  rdi, rdx
 
+    repne scasb
+    jne .nf
+
+    lea rax, [rdi-1]
+    sub rax, r9
+    ; ;返回指针（假的）
+    
+
+    pop rdi
+    ret
+
+.nf:
+    pop rdi
+.np:
+    xor rax, rax
+    ret
+
+;目前最好用的strchr
+;爆改sse2版本爆改成sse3版本strchr
+;（留空，源，源长，单字节字符）单位字节
+;长度给负数自动算，但是要保证0结尾
+kp_ssse3_strchr_fastcall_win64:
+;不管了改成返回索引吧，C的用索引方便
+    test rdx, rdx
+    jz   .np
+
+    mov  rcx, rdx
+    test r9b,  r9b
+    jz   kp_sse2_strlen_fastcall_win64
+    ;依旧
+
+    test r8, r8
+    jz   .np
+    jns  .havelen
+
+    push r9
+    push rdx
+
+    ;其实不用考虑对齐，因为没有栈上的simd参数
+    call kp_sse2_strlen_fastcall_win64
+    ;本是同根生o(*￣︶￣*)o
+
+    pop  rdx
+    pop  r9
+    test rax, rax
+    jz   .np
+    mov  r8,  rax
+
+.havelen:
+
+    movzx  r9d,  r9b
+    movd   xmm1, r9d
+    ;这期神了
+    pxor   xmm0, xmm0
+    pshufb xmm1, xmm0
+
+    ; xchg rdx, rcx
+    ; ;懒得改了直接交换
+
+    ; mov rdx, rcx
+    mov rcx, rdx
+    mov r9,  rcx
+    and rdx, -16 ;暴力对齐
+    sub rcx, rdx
+
+    ; pxor     xmm1, xmm1
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    shr r8d, cl ;除去无用掩码
+    jnz .found  ;不为零说明找到
+
+    test rdx, 16
+    ;检查对齐32位
+    jz   .ssego  ;如果第四位有，说明加上十六直接就是对齐32字节
+
+    add rdx, 16 ;不然就还要单独处理16字节，再对齐
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .gofind
+
+;准备工作
+.ssego:
+    add rdx, 16
+.sseloop:
+
+    movdqa   xmm0, [rdx]
+    movdqa   xmm2, [rdx+16]
+    pcmpeqb  xmm0, xmm1
+    pcmpeqb  xmm2, xmm1
+    pmovmskb r8d,  xmm0
+    pmovmskb eax,  xmm2
+    
+    shl  eax, 16   ;掩码高位
+    or   r8d, eax  ;合并掩码
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, 32
+    jmp .sseloop
+
+.gofind:
+
+    tzcnt eax, r8d
+    sub   rdx, r9
+    add   rax, rdx
+    
+    ret
+
+.found:
+
+    tzcnt eax, r8d
+
+    ret
+
+.ssefound:
+
+    tzcnt eax, r8d
+
+    sub rdx, r9
+    add rax, rdx
+    ret
+
+.np:
+    xor eax, eax
+    ret
 
 
 
@@ -3141,9 +3310,9 @@ ksignlabel:
 
 ;2026年10月3日
 
-; 重大更新：我把filetime_to_realtime坨狗屎重写啦（好耶）
+; 重大更新：我把filetime_to_realtime坨狗屎重写啦（好耶），复制了两个函数并且赋予了全新的名字
 ; 但是我只重写了计算部分，并且改变了部分行为，所以我给了这重制函数一个新的标号
-; 修复了许多未知问题
+; 修复了许多未知问题，有些老函数加上空指针检查
 
 ;2026年10月4日
 
