@@ -1,31 +1,8 @@
 ;kpstdlib.asm
 
-;KUSSA_LTSC 2026 All rights reserved.
+;KUSSA_LTSC 2026 All rights reserved
 
-; ============================================================================
-; ENGLISH TRANSLATION NOTICE
-; ============================================================================
-; This file is an English translation of the original Chinese comments.
-; Translated by DeepSeek. Some wording and local labels were edited for
-; readability by U.S. English readers.
-;
-; Function names, exported symbols, string constants, and executable behavior
-; were not intentionally changed. Local labels may differ from the original
-; Chinese source for readability.
-;
-; This translation is unofficial and provided for convenience only.
-; If there is any conflict between this translation and the original Chinese
-; source or the KUDOS SOURCE AVAILABLE LICENSE, the original Chinese source
-; and the license control.
-;
-; The KUDOS SOURCE AVAILABLE LICENSE Version 2.5 still applies. This
-; translation grants no additional rights. It must not be used to train,
-; fine-tune, distill, or evaluate any AI or machine-learning model.
-;
-; Translation date: 2026-10-04
-; ============================================================================
-
-;Legacy notices retained:
+;Old declaration retained:
 
 ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
 ; All rights reserved.
@@ -34,44 +11,43 @@
 
 ;KUSSA's standard library
 ;Source-visible, for free educational research and study only
-;I will add comments later
+;I'll add comments later
 
 ;What is this: a NASM project (obviously)
 ;What is it for: to write C code
-;Why are you looking at it: none of your business
-;Can you learn from it: yes, but I haven't finished the comments
+;Why are you looking at it: none of my business
+;Can you learn something from it: yes, but I haven't finished the comments
 ;It may not be as exemplary as other online tutorials
-;It leans more toward old-style 8086-era writing
-;It makes decisions and tradeoffs for the x86-64 instruction set
+;It leans more toward the old-style 8086-era way of writing
+;It makes decisions and trade-offs regarding the x86-64 instruction set
 ;It has far fewer restrictions than 8086
-;Is this a beginner version: no, I suggest you learn another language first or read another assembly tutorial
-;Is this a beginner version: yes, you can encounter most places where beginners easily make mistakes or get confused
-;What can you learn from it: a lot, depends on how you study
-;Is it standardized: in terms of calling convention it basically follows Microsoft x64 ABI
-;But its style may be rather strange
-;Don't understand it: don't read it, or ask AI
-;Is it completely handwritten: yes, though I may have let AI help check some parameters, e.g. I once typoed GetFileSizeEx as GetFileSizeEX
-;I often let AI help me look at compile and link errors, and assist in looking up the Intel SDM PDF
-;Is it easy to use: not necessarily, but except for win32api wrappers everything returns NULL on failure
-;NULL is a constant equal to zero
+;Is this a beginner version: no, I suggest you learn another language first or read other assembly tutorials first
+;Is this a beginner version: yes, here you can encounter most places where beginners easily make mistakes and get confused
+;What can you learn from it: a lot, depends on how you learn
+;Is it standardized: in terms of calling convention, it basically conforms to the Microsoft x64 ABI
+;But its style may be rather bizarre
+;What if you can't understand it: don't read it, or go ask AI
+;Is it completely handwritten: yes, though I may have had AI help check some parameters, for example I once typoed GetFileSizeEx as GetFileSizeEX
+;I often have AI look at compile and link errors for me, and help me look up the Intel SDM PDF
+;Is it easy to use: not necessarily, but except for the Win32 API wrappers, everything returns NULL to indicate failure
+;NULL is a constant, equal to zero
 ;How do I decide what to update: I write whatever I need
 ;(In fact, a month has passed and I still haven't finished the functions needed for my logging feature
-;Can it replace CRT: it can do quite a lot now, but cannot fully replace it yet
-;Why wrap system APIs: because it isn't necessarily compatible with windows.h, to help me remember better, to make maintenance and porting easier, and to make writing programs more convenient
-;Besides, why should you learn assembly: it lets you better understand how code works, and solve many bizarre bugs
+;Can it replace the CRT: it can do quite a lot now, but it cannot fully replace it yet
+;Why wrap system APIs: because they are not necessarily compatible with windows.h, to help me remember better, to make maintenance and porting easier, and to make writing programs more convenient
+;Besides, why should you learn assembly: it lets you better understand how code works and solve many bizarre bugs
 ;But learning assembly is not easy for most people
-;I'm the exception; I always have problems writing C code and don't know how to fix bugs
-;Is its performance better than CRT: no, about the same, maybe some aggressive functions are a tiny bit faster
-;In short, you need some programming foundation, and you need patience to understand 8086 instructions or x86 instructions to understand most of it. Comments are not a nanny; they only point out the most important and error-prone things
-;Warning: internal functions and unfinished functions must never be exported, and should not be modified; they only exist for code reuse in business services under specific scenarios
-
+;I am the exception; instead, I always have problems writing C code and don't know how to fix bugs
+;Will its performance be better than the CRT: no, about the same; maybe some aggressive functions are a tiny bit faster
+;In short, you need some programming foundation, and you need to be patient enough to understand 8086 instructions or x86 instructions to understand most of it. Comments are not a babysitter; they only point out the most important and easily mistaken things
+;Warning: internal functions and unfinished functions must never be exported, and should not be modified. They exist only to facilitate code reuse for business services in specific scenarios
 
 ;bash:
 
 ;nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj 
 ;gcc -o test.exe test.c kpstdlib.obj -nostdlib -lkernel32 -luser32 -mwindows -e main -ffreestanding -fno-stack-protector -fno-asynchronous-unwind-tables -O2
 
-;New notices:
+;New declaration:
 
 ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
 ; All rights reserved.
@@ -82,33 +58,41 @@
 ; This is NOT an open source license. This is a source-available,
 ; anti-commercial license.
 ;
-; This file is licensed only under KUDOS SOURCE AVAILABLE LICENSE Version 2.5.
-; Full terms are in the project root:
+; This file is licensed only under the KUDOS SOURCE AVAILABLE LICENSE Version 2.5.
+; See the project root for full terms:
 ; KUDOS SOURCE AVAILABLE LICENSE.txt
 ;
-; Without prior written paper consent from the project owner, it is forbidden to:
-; - use commercially, use by for-profit entities, or evaluate/test by for-profit entities;
-; - distribute, publish, upload, or share this software or modified versions with any third party;
-; - combine, link, or distribute together with commercial-related bundles;
-; - use this software to train, fine-tune, distill, or evaluate any AI or machine learning model.
+; Without the prior written consent on paper of the project owner, the following are prohibited:
+; - Commercial use, use by for-profit entities, evaluation or testing by for-profit entities;
+; - Distributing, publishing, uploading, or sharing this software or modified versions with any third party;
+; - Combining, linking, or distributing together with commercially related bundles;
+; - Using this software to train, fine-tune, distill, or evaluate any AI or machine learning model.
 ;
-; Permitted uses are limited to those explicitly specified by the license:
-; - personal private study;
-; - internal administrative use of the original unmodified software by non-profit organizations;
-; - public free courses on mainstream online platforms;
-; - non-commercial research, peer review, and paper publication under Section 1.4.
+; Permitted uses are limited to those explicitly specified in the license:
+; - Personal private study;
+; - Internal administrative use of the original unmodified software by non-profit organizations;
+; - Public free courses on mainstream online platforms;
+; - Non-commercial research, peer review, and paper publication under Section 1.4.
 ;
-; Configuration files that do not contain source code, scripts, binaries, or executable logic may be shared publicly.
+; Configuration files may be shared publicly if they do not contain source code, scripts, binaries, or executable logic.
 
-;Code starts below
+;About the license:
+
+; This is a license leaning toward education and rejecting commercialization
+; It is not an open source license, but it can relatively well facilitate my future use of other people's closed-source libraries
+; Of course, if there is a chance later, and it can independently implement all functions except system functions, the library license will likely revert to GPLv3
+
+; Of course, it is hard to implement all functions without relying on third-party or closed-source libraries; I cannot learn everything
+
+;...Code below...
 
 ; %include 'third.inc'
 %include 'kmarco.inc'
 
-;The macro expansion is placed here, don't ask me again!
+;Macro expansion is placed here, stop asking me!
 ;It's from the macro file at the beginning, written by me
-;Don't worry if you see these two lines, it's fine if you don't understand
-;Default stack alignment 16 is handled by itself
+;Don't worry about these two lines; it's fine if you don't understand them
+;Default stack alignment to 16 is handled automatically
 
 ; %macro adod 0
 ;     push rbp
@@ -126,7 +110,7 @@
 ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
 ; All rights reserved.
 ;
-; SPDX-License-Identifier: LicenseRef-scancode-kapivara-sal-1.0
+; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
 
 ; %macro adod 0
 ;     push rbp
@@ -153,7 +137,7 @@
 ;     sub rsp, 32
 ; %endmacro
 
-; equivalent to pdod
+; Equivalent to pdod
 ; %macro kaak 0
 ;     mov rsp, rbp
 ;     pop rbp
@@ -162,11 +146,11 @@
 bits    64
 default rel
 
-;The project inception date is unknown, but it can be confirmed to be on or before August 26, 2026
+;The project start date is unknown, but it can be confirmed to be on or before August 26, 2026
 
-;Although this is also for teaching, performance doesn't need to be too good, but I still want to pursue perfection a bit
-;For easier debugging and writing, use r64 for all registers unless necessary
-;Labels are all written carelessly because my English is bad
+;Although it's also for teaching and performance doesn't need to be too good, I still want to pursue some perfection
+;For ease of debugging and writing, use r64 for all registers unless unnecessary
+;Labels are written carelessly because my English is not good
 
 ; bu, date, dlsbur, dust, wasteimm are global static buffers.
 ; Functions that use these addresses absolutely, absolutely, absolutely must not be called concurrently in multiple threads!
@@ -178,21 +162,25 @@ global  bu
 ; global  realdays
 ; global  realmonth
 ; global  realyears
+; This dlsbur can customize symbols, limited to 8 ASCII characters
 global  dlsbur
-; This symbol can be customized
 ; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
 global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
+global  kp_improved_filetime_to_realtime_calc_fastcall_win64
 global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
 global  kp_win32api_get_file_pointer_ex_fastcall_win64
 global  kp_win32api_set_file_pointer_ex_fastcall_win64
 global  kp_win32api_get_file_size_ex_fastcall_win64
+global  kp_win32api_ezutf16le2utf8_fastcall_win64
+global  kp_win32api_virtual_alloc_fastcall_win64
+global  kp_win32api_virtual_free_fastcall_win64
 global  kp_win32api_close_handle_fastcall_win64
 global  kp_win32api_createfile_w_fastcall_win64
 global  kp_win32api_ezutf8t16le_fastcall_win64
 global  kp_win32api_write_file_fastcall_win64
+global  kp_text_utf8t16le_main_fastcall_win64
 global  kp_win32api_read_file_fastcall_win64
 global  kp_text_format_divide_fastcall_win64
-global  kp_text_utf8t16le_main_fastcall_win64
 global  kp_win32api_msgbox_w_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
@@ -224,7 +212,7 @@ extern  MultiByteToWideChar
 extern  WideCharToMultiByte
 
 section .data
-    ;Put data here first
+    ;Dump data here first
     bu:
     times 22  db 0
     date:
@@ -248,24 +236,24 @@ section .data
     overdays    dq 0 ;extra days
     realyears   dq 0 ;year
     realmonth   dq 0 ;month
-    realdays    dq 0 ;days
-    realhours   dq 0 ;hours
-    realminutes dq 0 ;minutes
-    realseconds dq 0 ;seconds
+    realdays    dq 0 ;day
+    realhours   dq 0 ;hour
+    realminutes dq 0 ;minute
+    realseconds dq 0 ;second
     
     ;Year constant, year 1600
     aoeg        equ 50491123200
     ;Beijing time offset
     UTC8_OFFSET equ 28800
-   ;FileTime subtraction value for disabling Beijing time
+   ;FileTime subtraction value to disable Beijing time
     unboeg equ UTC8_OFFSET*10000000
     ;Year constant with Beijing time offset added
     boeg   equ aoeg+UTC8_OFFSET
     
-    ;placeholder junk
+    ;placeholder garbage
     dust times 128 db 0
 
-    ;month tables
+    ;month table
     mthcom             db  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
     mthlep             db  31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
     ;time constants
@@ -273,7 +261,7 @@ section .data
     days_per_4_years   equ 1461
     days_per_100_years equ 36524
     days_per_400_years equ 146097
-    ;newly added $ replacement buffer
+    ;new $ replacement buffer
     dlsbur:
         times 8 db 0
     dlsbur_end:
@@ -296,7 +284,7 @@ section .data
     times 153 db 0                       ; 0x67-0xFF invalid area
 
 
-; mysterious constants, extracted from windows.inc
+; Mysterious constants, extracted from windows.inc
 
 ; ==================== General ====================
 ; empty content, null pointer
@@ -305,15 +293,15 @@ NULL                  equ 0
 TRUE                  equ 1
 ; false
 FALSE                 equ 0
-; default value for window position, let the system choose
+; default window position, let the system choose
 CW_USEDEFAULT         equ 0x80000000
 ; infinite wait
 INFINITE              equ 0xFFFFFFFF
 
 ; ==================== Window class styles ====================
-; repaint when window changes vertically
+; redraw when window changes vertically
 CS_VREDRAW            equ 0x0001
-; repaint when window changes horizontally
+; redraw when window changes horizontally
 CS_HREDRAW            equ 0x0002
 
 ; ==================== Window styles ====================
@@ -329,7 +317,7 @@ WS_VISIBLE            equ 0x10000000
 WS_CAPTION            equ 0x00C00000
 ; has border
 WS_BORDER             equ 0x00800000
-; has system menu (top-left icon)
+; has system menu (icon at upper left)
 WS_SYSMENU            equ 0x00080000
 ; resizable border
 WS_THICKFRAME         equ 0x00040000
@@ -343,21 +331,21 @@ WS_OVERLAPPEDWINDOW   equ WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAM
 ; ==================== ShowWindow ====================
 ; hide window
 SW_HIDE               equ 0
-; show normally
+; normal display
 SW_SHOWNORMAL         equ 1
-; show minimized
+; minimized display
 SW_SHOWMINIMIZED      equ 2
-; show maximized
+; maximized display
 SW_SHOWMAXIMIZED      equ 3
-; show according to most recent state
+; display according to most recent state
 SW_SHOW               equ 5
 ; restore from minimized/maximized
 SW_RESTORE            equ 9
 
 ; ==================== Window messages ====================
-; window creation
+; window created
 WM_CREATE             equ 0x0001
-; window destruction
+; window destroyed
 WM_DESTROY            equ 0x0002
 ; window size changed
 WM_SIZE               equ 0x0005
@@ -365,7 +353,7 @@ WM_SIZE               equ 0x0005
 WM_PAINT              equ 0x000F
 ; close request
 WM_CLOSE              equ 0x0010
-; quit message loop
+; exit message loop
 WM_QUIT               equ 0x0012
 ; key down
 WM_KEYDOWN            equ 0x0100
@@ -375,7 +363,7 @@ WM_KEYUP              equ 0x0101
 WM_CHAR               equ 0x0102
 ; menu/control command
 WM_COMMAND            equ 0x0111
-; timer trigger
+; timer triggered
 WM_TIMER              equ 0x0113
 ; mouse move
 WM_MOUSEMOVE          equ 0x0200
@@ -388,12 +376,12 @@ WM_RBUTTONDOWN        equ 0x0204
 ; right button up
 WM_RBUTTONUP          equ 0x0205
 
-; ==================== Message box ====================
-; only an "OK" button
+; ==================== MessageBox ====================
+; only an OK button
 MB_OK                 equ 0x00000000
-; "OK" + "Cancel"
+; OK + Cancel
 MB_OKCANCEL           equ 0x00000001
-; "Yes" + "No"
+; Yes + No
 MB_YESNO              equ 0x00000004
 ; error icon
 MB_ICONERROR          equ 0x00000010
@@ -404,14 +392,14 @@ MB_ICONWARNING        equ 0x00000030
 ; information icon
 MB_ICONINFORMATION    equ 0x00000040
 
-; ==================== Message box return values ====================
-; user clicked "OK"
+; ==================== MessageBox return values ====================
+; user clicked OK
 IDOK                  equ 1
-; user clicked "Cancel"
+; user clicked Cancel
 IDCANCEL              equ 2
-; user clicked "Yes"
+; user clicked Yes
 IDYES                 equ 6
-; user clicked "No"
+; user clicked No
 IDNO                  equ 7
 
 ; ==================== System resources ====================
@@ -429,7 +417,7 @@ COLOR_BTNFACE         equ 15
 ; ==================== Memory ====================
 ; commit: allocate physical storage
 MEM_COMMIT            equ 0x1000
-; reserve: only reserve address space, no physical storage
+; reserve: only occupy address space, do not allocate physical storage
 MEM_RESERVE           equ 0x2000
 ; decommit, keep address
 MEM_DECOMMIT          equ 0x4000
@@ -437,10 +425,10 @@ MEM_DECOMMIT          equ 0x4000
 MEM_RELEASE           equ 0x8000
 ; no access
 PAGE_NOACCESS         equ 0x01
-; readable and writable
+; read/write
 PAGE_READWRITE        equ 0x04
 
-; ==================== File ====================
+; ==================== Files ====================
 ; read access
 GENERIC_READ          equ 0x80000000
 ; write access
@@ -459,11 +447,11 @@ TRUNCATE_EXISTING     equ 5
 FILE_ATTRIBUTE_NORMAL equ 0x80
 ; invalid handle (API failure return value)
 INVALID_HANDLE_VALUE  equ -1
-; start from beginning of file
+; from beginning of file
 FILE_BEGIN            equ 0
-; start from current position
+; from current position
 FILE_CURRENT          equ 1
-; start from end of file
+; from end of file
 FILE_END              equ 2
 ; allow other processes to read
 FILE_SHARE_READ       equ 1
@@ -484,41 +472,41 @@ section .text
 
 ;strlen
 ;First function?
-;Very old-fashioned writing; there are 4 SIMD examples later
+;A very old-fashioned way of writing, there are 4 SIMD examples later
 kp_strlen_fastcall_win64:
 ;Only one parameter, rcx holds string start, returns rax, unit is bytes    
     xor  rax, rax
-    ;rax=0 used to search for \0
+    ;rax=0 is used to search for \0
     push rdi
     mov  rdi, rcx
     mov  rcx, -1
 
     cld;clear direction flag
 
-    repne scasb;repeat, continue scanning/comparing al and [rdi] while not equal
+    repne scasb;repeat; while not equal, continue scanning and comparing al with [rdi]
     or  rcx, rcx
-    ;This is purely an 8086 leftover; if rcx=0 it means not found or exactly landed, but x64 registers are huge, so no special handling
-    jz  .not_found
+    ;This is purely an 8086 aftereffect. If rcx=0 it means not found or exactly landed, but x64 registers are very large, so there is no special handling
+    jz  .nofind
     not rcx      ;invert
-    dec rcx      ;minus one
-    ;This gives the length, principle is binary properties
+    dec rcx      ;decrement by one
+    ;This way we get the length; the principle is due to binary properties
     mov rax, rcx
     pop rdi
     ret
 
-.not_found:
+.nofind:
     xor rax, rax
-.return:
+.ret:
     pop rdi
     ret
 
-;Deprecated, kept here for archival, with stack diagram
-;8086-era function, used to batch output number strings, but I found it not good on x64
-;!Warning: unfinished function, do not use!
+;Already deprecated, kept here purely for archival, with stack diagram attached
+;8086-era function, used at the time to output numeric strings in batches, but I found it not easy to use on x64
+;! Warning: unfinished function, absolutely do not use!
 kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
-;Subroutine, default already aligned, and no register parameters
-;Currently no RAX parameter passing feature yet
-;If rcx is 0 it means no numbers, exit directly
+;Subroutine, assumed already aligned, and no register-passed parameters
+;Currently the function of passing parameters via RAX has not been implemented
+;If rcx is 0, it means there is no number, exit directly
     or   rcx, rcx ;.....[STACK].....
     jz   .exit    ;NUM2       RBP+56
     push rbp      ;NUM1       RBP+48
@@ -528,50 +516,50 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     push rax      ;SHADOW 1
     push rbx      ;RET        RBP+8
     push rdx      ;RBP    0   RBP+0
-    push rdi      ;RBP points to original RBP push
-;save all used
+    push rdi      ;RBP points to the original RBP PUSH
+;save all used registers
     ;PREPROCE
 
     xor rsi, rsi
     xor rdi, rdi
 
 ;overall loop conversion output
-.stack_number_loop:
+.lb_tltp:
 
     mov rax, [rbp+rsi+48] ;read number from stack
-;new negative check
+;added negative check
     ; test rax, 0x8000000000000000
-    ; well x64 cannot directly write 64-bit imm except mov
+    ; Well, x64 cannot directly write a 64-bit imm except with mov
     ; jz   .np
-;change to shorter writing
+;changed to a shorter way
     or  rax, rax
-    jns .not_negative
-;if not negative skip
+    jns .isnotnegative
+;if not negative, skip
     mov byte [bu], 45 ;ASCII for negative sign
     inc rdi
-;negative to positive
+;convert negative to positive
     neg rax
 ;label: not negative
-.not_negative:
+.isnotnegative:
     mov  rbx, 10
     push rcx
     xor  rcx, rcx
-;division loop, divide by 10 each time to get ones digit
-.divide_loop:
+;division loop, divide by 10 each time to get the ones digit
+.divlop:
     inc  rcx      ;STACK
     xor  rdx, rdx ;ori_rcx,rcx*rdx
     div  rbx
     push rdx
     or   rax, rax
-    jz   .prepare_print
+    jz   .preprt
 
-    jmp .divide_loop
+    jmp .divlop
 ;prepare to print
-.prepare_print:
+.preprt:
 
     lea rbx, [bu]
 ;print loop (actually writing to memory)
-.write_digit_loop:
+.lre:
 
     pop rdx
     add rdx,       48
@@ -579,15 +567,15 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     mov [rbx+rdi], dl
     inc rdi
     dec rcx
-    jnz .write_digit_loop
+    jnz .lre
 
-;here rdx will all be popped, rsp points to ori_rcx
+;Here rdx will all be popped, rsp points to ori_rcx
 
     ; inc rdi
     mov byte [rbx+rdi], 0
-    ;append 0 at end
+    ;append 0 at the end
 
-;here it should call output bu, but not done yet
+;Here it should call output bu, but that's not done yet
 
 ;initialize for next loop
 
@@ -596,7 +584,7 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     pop rcx
 
     dec rcx
-    jnz .stack_number_loop
+    jnz .lb_tltp
 
     
 
@@ -610,32 +598,32 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
     pop rsi
     pop rbp
 
-;Logically should leave AX as return value, but actually I'm too lazy
+;Logically AX should be reserved for the return value, but actually I'm too lazy
 
 .exit:
     ret
 
 
-;pending agenda, parameters, e.g. RAX can indicate whether signed is enabled, whether address writeback is enabled, if enabled address defaults to starting RBX, I don't know if 64-bit has a special text command that can write across, I remember previously you could directly set direction, interval, then put text
-;now no pending, this function is deprecated, now it's x64 not 8086
-;once again declare this function deprecated, treat as advertisement (October 3, 2026)
+;Pending agenda, parameters, for example RAX could indicate whether signed is enabled, whether address write-back is enabled; if enabled, address defaults to starting at RBX. I don't know whether 64-bit has a special text command for strided writing. I remember before you could directly set direction, interval, then put text
+;Now there is no pending item; this function is deprecated. It is x64 now, not 8086
+;Once again, this function is deprecated. Just treat it as an advertisement (October 3, 2026)
 
-;internal function, C cannot use directly, 8086 code port
-;print rax alone, for logging, should not destroy any registers
-;destroys RAX return
+;Internal function, C cannot use it directly, 8086 code port
+;Print rax separately, for logging; should not corrupt any registers
+;Corrupts RAX return
 kp_prtnum_frmrax:
-;rax already assigned by default
+;Assumes rax has already been assigned
     push rdi
     xor  rdi,       rdi
-    or   rax,       rax ;check negative
-    jns  .not_negative ;if not negative skip
+    or   rax,       rax ;check for negative
+    jns  .isnotnegative ;if not negative, skip
     mov  byte [bu], 45  ;ASCII for negative sign
     
     inc rdi
-    neg rax ;negative to positive
+    neg rax ;convert negative to positive
 
-;not negative goes here
-.not_negative:
+;go here if not negative
+.isnotnegative:
     push rsi
     push rcx
     push rdx
@@ -643,26 +631,26 @@ kp_prtnum_frmrax:
     mov  rbx, 10
     xor  rcx, rcx
 ;division loop
-.divide_loop:
+.divlop:
     inc  rcx
     xor  rdx, rdx
     div  rbx
     push rdx
     or   rax, rax
-    jz   .prepare_print
-    jmp  .divide_loop
+    jz   .preprt
+    jmp  .divlop
 ;print preparation
-.prepare_print:
+.preprt:
     lea rbx, [bu]
-    ;first print to bu, load address here
+    ;print to bu first, load address here
 ;write digits loop
-.write_digit_loop:
+.loopofrewrite:
     pop rdx
     add rdx,       48
     mov [rbx+rdi], dl
     inc rdi
     dec rcx
-    jnz .write_digit_loop
+    jnz .loopofrewrite
 
     ; inc rdi ; this inc cannot be written
     mov byte [rbx+rdi], 0
@@ -678,46 +666,46 @@ kp_prtnum_frmrax:
 
     ret
 
-;calculate date, from parameter 3 to parameter 8 return year, month, day, hour, minute, second (why is this here)
-;(this line of comment is clearly written at the start of kp_filetime_to_realtime_frmrax_ret_fastcall_win64)
-;(actually forgot to delete when moving, treat as easter egg)(October 3, 2026)
+;Calculate date; from parameters 3 to 8 return year, month, day, hour, minute, second (why is this here)
+;(This line of comment is clearly written at the beginning of kp_filetime_to_realtime_frmrax_ret_fastcall_win64)
+;(Actually I forgot to delete it when moving; treat it as an easter egg) (October 3, 2026)
 
-;print rcx alone, now C code can use it
-;useless function, haha, this is actually the shortest one
+;Print rcx separately; now C code can use it
+;Trivial trampoline function, haha, this is the shortest one
 kp_prtnum_frmrcx_fastcall_win64:
     mov rax, rcx
     jmp kp_prtnum_frmrax
 
-;text copy, with checks (actually useless checks)
-;rcx holds source pointer, rdx holds source length, r8 holds destination pointer, r9 holds destination length, all units bytes
-;returns end 0 pointer, rdx negative means auto-calculate
+;Text copy, with checks (actually useless checks)
+;rcx holds source pointer, rdx holds source length, r8 holds destination pointer, r9 holds destination length, all units in bytes
+;Returns pointer to trailing 0; if rdx is negative, calculate automatically
 kp_strcpy_fastcall_win64:
     
     or rcx, rcx
-    jz .invalid_args
+    jz .mgd
     or r8,  r8
-    jz .invalid_args
-    ;supposedly null pointers exist
+    jz .mgd
+    ;They say there are null pointers
 
     or   rdx, rdx
-    jns  .have_src_len
+    jns  .havesrclen
     push rcx
 
-    call kp_strlen_fastcall_win64 ;first function
-    ;doesn't destroy registers so can use directly, but if using later SIMD versions may destroy registers, need to save
+    call kp_strlen_fastcall_win64 ;First function
+    ;It does not corrupt registers so it can be used directly, but if using the later SIMD version it may corrupt registers, so save them
     mov  rdx, rax                 ;return value in rax, calling convention
 
     pop rcx
 
-.have_src_len:
+.havesrclen:
 
     cmp rdx, r9
-    jae .invalid_args
-    ;if source is longer than destination exit
-    ;no need to check if rcx is 0 because 0 is fine
+    jae .mgd
+    ;if source is longer than destination, exit
+    ;No longer check whether rcx is 0 because 0 is fine
     ; push rbp
     ; mov  rbp, rsp
-    ; stack frame no longer needed now
+    ; stack frame is no longer needed now
 
     cld
 
@@ -727,15 +715,15 @@ kp_strcpy_fastcall_win64:
     mov rsi, rcx ;source
     mov rdi, r8  ;destination
     cmp rdx, 15  ;branch for different lengths
-    ja  .copy_qwords
+    ja  .msq
     mov rcx, rdx
     rep movsb
 
     mov byte [rdi], 0
 
-    jmp .done
+    jmp .normal
 
-.copy_qwords:
+.msq:
     mov rcx, rdx
     shr rcx, 3
     rep movsq;movsq is faster than movsb on old CPUs, but actually all x64 have SSE2
@@ -743,54 +731,54 @@ kp_strcpy_fastcall_win64:
     and rcx, 7
     rep movsb
 
-    mov byte [rdi], 0 ;append 0 at end
+    mov byte [rdi], 0 ;append 0 at the end
     
-.done:
+.normal:
     ; sub rdi, r8
     ; mov rax, rdi
-    ; commented this returns length, meaningless, equals srclen
+    ; Commenting this way is returning length, meaningless, equals srclen
     mov rax, rdi
     ;return pointer
     pop rdi
     pop rsi
     ret
 
-.invalid_args:
-    xor rax, rax ;0 means failure, or length is 0
+.mgd:
+    xor rax, rax ;0 represents failure, or length is 0
     ; mov rsp, rbp
     ; pop rbp
     ret
 
-db 'Shaoyu is awesome' ;this is the signature, the feature, these 4 Chinese characters will be put into the exe unchanged, later to check this function just search the feature in x64dbg and locate here
+db '少羽牛逼' ;This is the signature, i.e. the feature. These 4 characters will be placed unchanged into the exe. Later, to check this function, just search for the signature in x64dbg and you can locate here
 
-;input rcx, can use system-provided time GetSystemTimeAsFileTime
-;parameters: rcx holds time provided by system, 1 address used to return plain text compact time
-;e.g.: 20260905220631_134330908XXXXXXXXX\0
-;the remaining 6 addresses are memory pointers for year month day hour minute second
+;Input rcx, can use system-provided time GetSystemTimeAsFileTime
+;Parameters: rcx holds time provided by system, 1 address used to return compact plain-text time
+;For example: 20260905220631_134330908XXXXXXXXX\0
+;The remaining 6 addresses are memory pointers for year, month, day, hour, minute, second respectively
 ;void(imm64,immmem64ptr,mem64addr*6)
 kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
-;There was a design problem at the time, only Beijing time was considered, and UTC offset was not made configurable in one go
-;and structs were not considered, so it's very messy
-;If you pass a null pointer, the program won't crash, just won't return anything; yes, return values weren't considered at first, because they weren't needed, or I never thought how it could fail
-;the largest function, I can only say
+;There were design problems at the time; I only considered Beijing time and didn't consider making it a UTC offset all at once
+;And I didn't consider structs at the time either, so it's very messy
+;If you pass a null pointer, the program won't crash, it just won't return anything. Yes, I didn't consider return values at the time because they weren't needed, or rather I never thought it could fail
+;The function of the biggest project, I can only say
 
 ; ...STACK_TABLE...
-; P8 seconds RBP+72
-; P7 minutes RBP+64
-; P6 hours   RBP+56
-; P5 days    RBP+48
-; S4         R9
-; S3         R8
-; S2         RDX
-; S1         RCX
-; RET        RBP+8
-; RBP        RBP
+; P8 second   RBP+72
+; P7 minute   RBP+64
+; P6 hour     RBP+56
+; P5 day      RBP+48
+; S4      R9
+; S3      R8
+; S2      RDX
+; S1      RCX
+; RET     RBP+8
+; RBP     RBP
 ; RBX
 ; RSI
 ; RDI
 
     push rbp
-    mov  rbp, rsp ;used later to get parameters
+    mov  rbp, rsp ;will be used to get parameters later
     push rbx
     push rsi
     push rdi
@@ -798,27 +786,27 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
     ; xor rsi, rsi
     ; mov rdi, 7
-    ; no need for these two lines when expanded
+    ; if expanded, these two lines are unnecessary
 
-;check null pointers, although expansion is better for performance, fine let's expand
+;Check null pointers; although expansion has better performance, fine, let's expand it
     or  rdx, rdx
-    jz  .null_pointer
+    jz  .nulptr
     or  r8,  r8
-    jz  .null_pointer
+    jz  .nulptr
     or  r9,  r9
-    jz  .null_pointer
+    jz  .nulptr
     mov rax, [rbp+48]
     or  rax, rax
-    jz  .null_pointer
+    jz  .nulptr
     mov rax, [rbp+56]
     or  rax, rax
-    jz  .null_pointer
+    jz  .nulptr
     mov rax, [rbp+64]
     or  rax, rax
-    jz  .null_pointer
+    jz  .nulptr
     mov rax, [rbp+72]
     or  rax, rax
-    jz  .null_pointer
+    jz  .nulptr
 
 
 
@@ -829,10 +817,10 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     ;all parameters saved, first 4 in shadow space
     mov rax,      rcx
 
-    xor rbx, rbx ;I forgot what this line is for, actually useless (yes useless, kept as easter egg)(October 3, 2026)
+    xor rbx, rbx ;I forgot what this line is for too; it's actually useless (yes, useless, kept as an easter egg) (October 3, 2026)
     
-    ;modified, but behavior basically unchanged
-    ;allow correct return when ft=0
+    ;modified, but behavior is basically unchanged
+    ;so that ft=0 can also return correctly
     mov r10, unboeg
     add rax, r10
 
@@ -848,20 +836,20 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     div rcx
     
     ;rax=days, rdx=remaining seconds
-    ;if you don't understand go check SDM
+    ;if you can't understand, go check the SDM
     mov [days],     rax
     mov [seconds],  rdx
-    mov rcx,        days_per_400_years ;first calculate how many complete 400 years
+    mov rcx,        days_per_400_years ;first calculate how many complete 400-year periods
     xor rdx,        rdx
     div rcx
     mov [nboffhys], rax
     mov rax,        rdx
-    mov rcx,        days_per_100_years ;continue divide by 100 years
+    mov rcx,        days_per_100_years ;continue dividing by 100 years
     xor rdx,        rdx
     div rcx
     mov [nbofohys], rax
     mov rax,        rdx
-    mov rcx,        days_per_4_years   ;calculate how many 4 years
+    mov rcx,        days_per_4_years   ;calculate how many 4-year periods
     xor rdx,        rdx
     div rcx
     mov [nboffoys], rax
@@ -874,19 +862,19 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     add [tempyears], rax
     imul rax,[nboffoys],4
     add [tempyears], rax
-    ;now everything except the part less than 4 years is calculated
+    ;now all parts except less than 4 years have been calculated
 
-;first compare leap year necessity
+;first compare whether leap year handling is necessary
     mov rax, [tempdays]
     cmp rax, 1460
-    je  .special_1460_days
+    je  .skipdivy
     ;this label is later
     mov rcx, 365
     xor rdx, rdx
     div rcx
 
-;1460 days directly portal here    
-.store_year_remainder:    
+;1460 days directly teleports here    
+.skipdivn:    
     
     ;save remaining years and days
     mov [nbofovys],  rax
@@ -897,29 +885,29 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov [realyears], rax
     ; mov rax,         r9
 
-    ; comments written for AI because AI annoyed me
+    ; Comments written for AI after being angered to death by AI
     ; tempyears = absolute year-1 - ((absolute year-1) mod 4)
-    ; = start of current 4-year cycle - 1 (not absolute year!)
-    ; example: 2000 -> 1996, 2001 -> 2000, 1900 -> 1896
-    ; purpose: compare tempyears and tempyears+4 with /100, /400
-    ;   equal -> no crossing; not equal -> crossing, continue checking 400
-    ; absolute year = tempyears + 1 + nbofovys (number of complete years already passed in current cycle)
+    ; = current 4-year period start - 1 (not absolute year!)
+    ; Example: 2000 -> 1996, 2001 -> 2000, 1900 -> 1896
+    ; Purpose: compare tempyears with tempyears+4 /100, /400
+    ;   equal -> no crossing; not equal -> crossed, continue checking 400
+    ; Absolute year = tempyears + 1 + nbofovys (complete years already passed in current period)
 
-    ;now calculate whether there is a century common year
+    ;now check whether there is a century common year
 
     lea rbx, [mthlep]
     lea rcx, [mthcom]
-    ;Hovering over labels in VS Code shows comments above them (plugin needed)
+    ;In VS Code, hovering the cursor over it shows the comment above the label (plugin required)
 
     ; cmp    rax, 3
     cmp    r9,  3
     cmovne rbx, rcx
-    jne    .month_subtract
+    jne    .lepsub
 
-    ;remaining need to consider leap year
+    ;next we need to consider leap years
     mov   rax, [tempyears]
     mov   r9,  rax
-    ;first copy rax, r9 is original tempyears
+    ;copy rax first; r9 is the original tempyears of rax
     mov   rcx, 100
     xor   rdx, rdx
     div   rcx
@@ -931,8 +919,8 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     div   rcx
     cmp   rax, r8
     ;compare with first result
-    ;here still leap year table
-    je    .month_subtract
+    ;here it is still the leap year table
+    je    .lepsub
     ;not equal means there is a century year
     ;now check whether there is a 400-year leap year
     mov   rcx, 400
@@ -946,40 +934,40 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     add   rax, 4
     div   rcx
     cmp   rax, r8
-    ;compare, equal means not a 400-year, but century common year
+    ;compare; equal means it is not a 400-year leap, but a century common year
     lea   rbx, [mthlep]
     lea   rcx, [mthcom]
     cmove rbx, rcx
 
 ;code reuse here
-;calculate month subtraction
-;expects rax equals extra days, initialized below
+;subtraction for calculating month
+;this expects rax to equal the extra days, already initialized below
 
-.month_subtract:
+.lepsub:
     mov rax, [overdays]
     xor rcx, rcx
     xor rsi, rsi
 
-.month_loop:
+.leplop:
     inc   rcx
-    ;does anyone still remember rsi was cleared at the beginning (originally)
-    ;ok now changed to clear ahead
+    ;Does anyone really remember that rsi has been zeroed? (Originally at the beginning)
+    ;OK now changed to zero it in advance
     movzx rdx, byte [rbx+rsi]
     inc   rsi
     cmp   rax, rdx
     ; jge   .lepsub
-    jb    .month_found
+    jb    .edlepsub
     sub   rax, rdx
-    jmp   .month_loop
+    jmp   .leplop
 
-.month_found:    
+.edlepsub:    
     ;rax=remaining days, rcx equals month
     inc rax
-    ;this is the day not yet finished, so add
+    ;this is the unfinished day, so add it
     mov [realdays],  rax
     mov [realmonth], rcx
 
-;year month day calculated, next hour minute second  
+;At this point year, month, day are calculated; next are hour, minute, second  
     mov rax, [seconds]
     xor rdx, rdx
     mov rcx, 3600
@@ -987,7 +975,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
     mov [realhours], rax
     
-    ;now remaining seconds in rdx go to rax
+    ;now give the remaining seconds in rdx to rax
     xchg rax, rdx
     xor  rdx, rdx
     mov  rcx, 60
@@ -996,18 +984,18 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov [realminutes], rax
     mov [realseconds], rdx
 
-;now output return value
+;now output return values
 
-    lea rbx, [date] ;currently default output here
+    lea rbx, [date] ;currently default output goes here
 
-    ;rbx ready for output
+    ;rbx is ready for output
     
     mov rax, rbx
     mov r9,  datelen
     xor rsi, rsi
     mov rdi, 6
     lea r15, [realyears]
-.format_time_loop:
+.reprtlop:
     lea  rcx, [bu]
     mov  rdx, -1
     mov  r8,  rax
@@ -1018,13 +1006,13 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov  rax, [r15+rsi]
     call kp_prtnum_frmrax_intime
     call kp_strcpy_enddls_fastcall_win64
-    ;this function returns rax as end address
+    ;this function returns rax as the end address
     add  rsi, 8
     dec  rdi
-    jnz  .format_time_loop
-    ;8086 era still used to loops to compress code, but now theoretically expansion is better for performance
+    jnz  .reprtlop
+    ;In the 8086 era I was still used to loops to compress code, but now theoretically unrolling gives better performance
 
-;now time concatenation complete
+;now the time has been concatenated
 
     lea rcx, [bu]
     mov rdx, -1
@@ -1050,15 +1038,15 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     call kp_prtnum_frmrax
     call kp_strcpy_enddls_fastcall_win64
     
-;newly added rewrite $
+;newly added $ rewriting
     mov rcx, 0x007D3B3A3A5F2D2D
     ;equals ('--_::;}',0)
-    ;little endian needs reversed writing
+    ;little-endian must be written reversed
     ;small update, now has } ending
 
-    mov [dlsbur], rcx ;this is parameter for another function
+    mov [dlsbur], rcx ;this is a parameter for another function's matter
 
-;r9 length must be given yourself
+;r9 length must be provided yourself
     lea  rcx, [date]
     call kp_strlen_fastcall_win64
     mov  r9, rax
@@ -1068,29 +1056,29 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     lea r8,  [date]
 
     call kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
-    ;I think it won't fail, nothing to check
+    ;I think it won't fail, and there's nothing worth checking
 
     mov rcx,   [rbp+24]
     lea rdx,   [date]
     mov [rcx], rdx
-    ;text date written back
+    ;text date has been written back
 
     xor rsi, rsi
     mov rdi, 6
 
-.write_back_loop:
+.reback:
 
     mov rcx,   [rbp+rsi+32]
     mov rdx,   [r15+rsi]
     mov [rcx], rdx
     add rsi,   8
     dec rdi
-    jnz .write_back_loop
+    jnz .reback
 
 ;return process
 
 ;null pointer return
-.null_pointer:
+.nulptr:
 
     pop r15
     pop rdi
@@ -1100,45 +1088,45 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
     ret
 
-;1460 days special handling label
-.special_1460_days:
+;1460-day special handling label
+.skipdivy:
     mov rax, 3
     mov rdx, 365
-    jmp .store_year_remainder
+    jmp .skipdivn
 
 db 'This_is_a_sentence.' ;still a marker
 
-;Damn, finally finished this thing, the date function took me three weeks    
-;calculate date, from parameter 3 to parameter 8 return year, month, day, hour, minute, second
-;this thing tortured me for three weeks (ended September 13, 2026)
+;Damn, I finally finished this thing; the date function took me three weeks    
+;Calculate date; from parameters 3 to 8 return year, month, day, hour, minute, second
+;This thing tortured me for three weeks (ended September 13, 2026)
 
-;text copy, with checks (actually useless checks)
-;only difference from strcpy is
+;Text copy, with checks (actually useless checks)
+;The only difference from strcpy is
 ;ending is '$\0'
-;rcx holds source pointer, rdx holds source length, r8 holds destination pointer, r9 holds destination length, all units bytes
-;returns end 0 pointer, rdx negative means auto-calculate
+;rcx holds source pointer, rdx holds source length, r8 holds destination pointer, r9 holds destination length, all units in bytes
+;Returns pointer to trailing 0; if rdx is negative, calculate automatically
 kp_strcpy_enddls_fastcall_win64:
     
     or   rcx, rcx
-    jz   .invalid_args
+    jz   .mgd
     or   r8,  r8
-    jz   .invalid_args
-    ;supposedly null pointers exist
+    jz   .mgd
+    ;They say there are null pointers
     or   rdx, rdx
-    jns  .have_length
+    jns  .busu
     push rcx
-    call kp_strlen_fastcall_win64 ;don't casually replace with another strlen, otherwise you have to save registers
+    call kp_strlen_fastcall_win64 ;Don't casually replace with another strlen, otherwise you have to save registers
     mov  rdx, rax
     pop  rcx
-.have_length:   
+.busu:   
     lea r10, [rdx+1] ;check required size
     cmp r10, r9
-    jae .invalid_args
-    ;if source is longer than destination exit
-    ;no need to check if rcx is 0 because 0 is fine
+    jae .mgd
+    ;if source is longer than destination, exit
+    ;No longer check whether rcx is 0 because 0 is fine
     ; push rbp
     ; mov  rbp, rsp
-    ; no longer needed now
+    ; not needed now
 
     cld
 
@@ -1148,11 +1136,11 @@ kp_strcpy_enddls_fastcall_win64:
     mov  rsi, rcx
     mov  rdi, r8
     cmp  rdx, 15
-    ja   .copy_qwords
+    ja   .msq
     mov  rcx, rdx
     rep movsb
 
-    ; mov byte [rdi], 0 ; this is left from strcpy, changed to below
+    ; mov byte [rdi], 0 ; this is left over from strcpy, changed to the following
     ; mov ah,    0
     ; mov al,    ('$')
     mov ax,    0x0024
@@ -1161,9 +1149,9 @@ kp_strcpy_enddls_fastcall_win64:
     inc rdi
     ;now rdi points to \0
 
-    jmp .done
+    jmp .normal
 
-.copy_qwords:
+.msq:
     mov rcx, rdx
     shr rcx, 3
     rep movsq
@@ -1177,9 +1165,9 @@ kp_strcpy_enddls_fastcall_win64:
     mov [rdi], ax
     inc rdi
 
-    ; jmp .done
+    ; jmp .normal
     
-.done:
+.normal:
     ; sub rdi, r8
     ; mov rax, rdi
     mov rax, rdi
@@ -1187,19 +1175,19 @@ kp_strcpy_enddls_fastcall_win64:
     pop rdi
     pop rsi
     ret
-    ; jmp .return
-.invalid_args:
+    ; jmp .exit
+.mgd:
     xor rax, rax
-.return:
+.exit:
     ; mov rsp, rbp
     ; pop rbp
     ret
 
-;replace all $ with custom ASCII symbols, currently limited to 8
+;Replace all $ with custom ASCII symbols, currently limited to 8
 ;(source, source length, destination, destination length)
-;source ending with 0, source length negative means auto-calculate
-;source length is also the number of symbol replacements (equivalent)
-;doesn't return pointer, returns bool, non-fixed value
+;source ending with 0; if source length is negative, calculate automatically
+;source length is also the number of symbol replacements (equivalent to)
+;does not return pointer, returns as bool, non-fixed value
 kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     push rbp
     mov  rbp, rsp
@@ -1208,10 +1196,10 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     
     or r9, r9
     jz .error
-    ;destination length 0 then nothing to say
+    ;if destination length is 0, what else is there to say
 
     or   rdx, rdx
-    jns  .have_length
+    jns  .havelen
     mov  r10, rcx
     ;backup rcx
     call kp_strlen_fastcall_win64
@@ -1221,24 +1209,24 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     mov  rcx, r10
     ;restore rcx
 
-.have_length:
+.havelen:
     cmp rdx, 8
     ja  .error
-    ;modified, now max 8 replacements, because my buffer is only this big
+    ;modified, now at most 8 replacements, because the buffer I gave is only this big
     ;September 24, 2026
     mov rsi, rcx
     ;now rsi points to source
     mov rdi, r8
     mov rcx, r9
-    ;now rcx is length
+    ;now rcx is the length
 
-.replace_loop:    
+.replop:    
     mov al, ('$')
     mov ah, [rsi]
 
     cld
     repne scasb;scan
-    jne .exit ;this only executes when rcx=0 or found; if flag is not equal, not found, because length is set, won't overrun
+    jne .exit ;This only executes when rcx=0 or found. If the flag is not equal, it means not found; because length is set, it won't go out of bounds
 
     mov [rdi-1], ah
     inc rsi
@@ -1247,11 +1235,11 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     or  rdx, rdx
     jz  .exit
     or  rcx, rcx
-    jnz .replace_loop
+    jnz .replop
 
 .exit:
 
-;in short rax success doesn't return null
+;In short, rax on success does not return null
 
     pop rdi
     pop rsi
@@ -1264,18 +1252,18 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     jmp .exit
 
 
-;internal function, only for date feature    
-;destroys RAX as return value
+;Internal function, only for date feature    
+;Corrupts RAX as return value
 kp_prtnum_frmrax_intime:
-;rax already assigned by default
+;Assumes rax has already been assigned
     push rdi
     xor  rdi,       rdi
-    or   rax,       rax ;check negative
-    jns  .not_negative  ;if not negative skip
+    or   rax,       rax ;check for negative
+    jns  .np            ;if not negative, skip
     mov  byte [bu], 45  ;ASCII for negative sign
     inc  rdi
     neg  rax
-.not_negative:
+.np:
     ; push rsi
     push rcx
     push rdx
@@ -1283,37 +1271,37 @@ kp_prtnum_frmrax_intime:
 
     mov rbx, 10
     xor rcx, rcx
-.divide_loop:
+.divlop:
     inc  rcx
     xor  rdx, rdx
     div  rbx
     push rdx
     or   rax, rax
-    ; jz   .prepare_print
-    ; jmp  .divide_loop
-    jnz  .divide_loop
-.prepare_print:
+    ; jz   .preprt
+    ; jmp  .divlop
+    jnz  .divlop
+.preprt:
     lea rbx, [bu]
-    ;first print to bu
-.write_digit_loop:
+    ;print to bu first
+.lre:
     pop rdx
     add rdx,       48
     mov [rbx+rdi], dl
     inc rdi
     dec rcx
-    jnz .write_digit_loop
+    jnz .lre
 
     ; inc rdi
     mov byte [rbx+rdi], 0
 
-;data processing, used by date function for alignment
-;if rsi is not 0 keep 2 digits
+;Data processing, used by date function for alignment
+;if rsi is not 0, keep 2 digits
     ; mov  rsi,   [rbp+32]
     test rsi,   rsi
-    jz   .skip_padding
+    jz   .sk
     mov  ax,    [rbx]
     test ah,    ah
-    jnz  .skip_padding
+    jnz  .sk
     xchg ah,    al
     ;swap one digit and '0'
     mov  al,    ('0')
@@ -1323,7 +1311,7 @@ kp_prtnum_frmrax_intime:
     mov [rbx+2], al
     ;append 0 at end
 
-.skip_padding:
+.sk:
 
     lea rax, [bu]
     ;return address
@@ -1335,21 +1323,21 @@ kp_prtnum_frmrax_intime:
     pop rdi
     ret
 
-;append string at end, 4 parameters
+;Append string at end, 4 parameters
 ;(source, source length, destination start, destination buffer length)
-;source length negative means auto-calculate
-;returns end \0 pointer, failure returns 0
+;if source length is negative, calculate automatically
+;returns pointer to trailing \0, returns 0 on failure
 kp_strend_fastcall_win64:
 
-    ;check null pointers and 0 length
+    ;check null pointers and zero length
     test rcx, rcx
-    jz   .null_or_empty
+    jz   .nullet
     test r8,  r8
-    jz   .null_or_empty
+    jz   .nullet
     test r9,  r9
-    jz   .null_or_empty
+    jz   .nullet
     test rdx, rdx
-    jz   .null_or_empty
+    jz   .nullet
 
     ;main part begins
 
@@ -1357,33 +1345,33 @@ kp_strend_fastcall_win64:
     mov rcx, r8  ; rcx = dst, for internal strlen
     
     call kp_strlenled_inside
-    ; returns: rax = destination end \0 pointer, rcx = current destination length
+    ; Returns: rax = pointer to destination trailing \0, rcx = current destination length
 
     sub rcx, r9 ; current length - total capacity
-    neg rcx     ; invert, get remaining space
-    js  .null_or_empty ; if negative, destination space full, leave directly
+    neg rcx     ; negate to get remaining space
+    js  .nullet ; if negative, destination space is full, just leave
 
     mov r9,  rcx
     mov rcx, r10
 
 ;mysterious label
-.no_auto_length:   
+.noauto:   
 
-    ;now can start copying string
+    ;now we can start copying the string
     
-    mov r8, rax ; r8 = destination end \0 address
+    mov r8, rax ; r8 = address of destination trailing \0
     
     call kp_strcpy_fastcall_win64
     
     ret
 
-;null pointer and insufficient length exit
-.null_or_empty:
+;exit on null pointer or insufficient length
+.nullet:
     xor rax, rax
     ret
 
-;string end
-;only one parameter, rcx holds string start, returns rax pointing to \0, failure returns 0
+;End of string
+;Only one parameter, rcx holds string start, returns rax pointing to \0, returns 0 on failure
 kp_strled_fastcall_win64:
 
     xor  rax, rax
@@ -1394,25 +1382,25 @@ kp_strled_fastcall_win64:
 
     repne scasb 
     or  rcx, rcx
-    jz  .not_found
+    jz  .nofind
     ; not rcx
     ; dec rcx
     ; mov rax, rcx
     lea rax, [rdi-1]
     pop rdi
     ret
-    ; jmp .return
+    ; jmp .ret
 
-.not_found:
+.nofind:
     xor rax, rax
-.return:
+.ret:
     pop rdi
     ret
 
-;internal function, only for internal use
-;destroys rax, rcx, returns length and end respectively
+;Internal function, for internal use only
+;Corrupts rax, rcx; returns length and end respectively
 kp_strlenled_inside:
-;only one parameter, rcx holds string start, returns rax pointing to \0, rcx returns length, failure both return 0
+;Only one parameter, rcx holds string start, returns rax pointing to \0, rcx returns length, both return 0 on failure
     xor  rax, rax
     push rdi
     mov  rdi, rcx
@@ -1421,26 +1409,26 @@ kp_strlenled_inside:
 
     repne scasb 
     or  rcx, rcx
-    jz  .not_found
+    jz  .nofind
     not rcx
     dec rcx
     lea rax, [rdi-1]
     pop rdi
     ret
-    ; jmp .return
+    ; jmp .ret
 
-.not_found:
+.nofind:
     xor rax, rax
     xor rcx, rcx
-.return:
+.ret:
     pop rdi
     ret
 
-;use system API to quickly convert UTF8 to UTF16le
-;int(src,srclen,dst,dstlen) units all bytes
-;no checks, directly use API return value *2
-;if you pass strlen without \0 you need to append 0 yourself at the end
-;I suggest just passing -1 for length
+;Use system API to quickly convert UTF8 to UTF16le
+;int(src,srclen,dst,dstlen) all units in bytes
+;No checks, directly use API return value * 2
+;If what you pass is strlen without \0, you must append 0 yourself at the end
+;I suggest directly filling length with -1
 kp_win32api_ezutf8t16le_fastcall_win64:
     
     adod
@@ -1463,16 +1451,16 @@ kp_win32api_ezutf8t16le_fastcall_win64:
 
     ret
 
-;short input version of time function, still no return value considered at first
-;void(filetime, fast string address, struct address start, disable Beijing time)
-;about disabling Beijing time (if 0 then ignore, if non-zero then give UTC time)
+;Short-input version of time function; again, return values were not considered at the time
+;void(filetime, fast string address, struct address start, disable Beijing time
+;About disabling Beijing time (if 0, ignore; if non-zero, give UTC time)
 kp_timefmt_fastcall_win64:    
 
     adod
 
     test rdx, rdx
-    jz   .no_dst_ptr    ;give an unused 8 bytes, prevent crash
-.have_dst_ptr:
+    jz   .nodx    ;give a useless 8 bytes to prevent crash
+.oudx:
 
     push rbx
     push rdi
@@ -1481,11 +1469,11 @@ kp_timefmt_fastcall_win64:
     mov  rbx, rcx
 
     test r9,  r9     ;check time flag
-    jz   .enable_beijing
+    jz   .enboeg
     mov  r10, unboeg ;roll back UTC time
     sub  rcx, r10
-;enable Beijing time jump directly
-.enable_beijing:
+;if Beijing time enabled, jump directly
+.enboeg:
 
     or  r8, r8
     jnz .normal
@@ -1495,7 +1483,7 @@ kp_timefmt_fastcall_win64:
 
     adod
 
-    ;parameter passing group
+    ;parameter passing squad
     lea  r10, [r8+40]
     push r10
     lea  r10, [r8+32]
@@ -1515,20 +1503,20 @@ kp_timefmt_fastcall_win64:
 
 ;write back filetime
 
-    ;there was a push rdx before
+    ;there is a push rdx before
     pop  rdi
     pop  r9
     test r9,  r9
-    jz   .no_rewrite
+    jz   .nore
     test rdi, rdi
-    jz   .no_rewrite
-    ;next rewrite back the real filetime
+    jz   .nore
+    ;next, overwrite back to the real filetime
     mov  rdi, [rdi]
     mov  al,  ('{')
     mov  rcx, -1
     cld
     repne scasb
-    jne  .no_rewrite
+    jne  .nore
     mov  rax, rbx
     ;now rax is filetime
     call kp_prtnum_frmrax
@@ -1546,11 +1534,11 @@ kp_timefmt_fastcall_win64:
     ret
 
     ;I know this function is a pile of crap
-    ;but there is no way, because backward compatibility must be ensured
-    ;now I can only write a cramped portal useless function
-    ;I'll write the complete version of this thing some other time
+    ;But there is no way, because I need to maintain compatibility with the past
+    ;Now I can only write a cramped portal/trampoline function to do it
+    ;I'll write a complete version of this thing separately when I have time later
 
-.no_rewrite:
+.nore:
 
     pop rdi
     pop rbx
@@ -1558,13 +1546,13 @@ kp_timefmt_fastcall_win64:
 
     ret
 
-.no_dst_ptr:
+.nodx:
     lea rdx, [wasteimm]
-    jmp .have_dst_ptr
+    jmp .oudx
 
-;replace one $ with custom ASCII symbol
-;(destination, character in dl), destroys rax, rcx
-;no checks at all, internal function
+;Replace one $ with custom ASCII symbol
+;(destination, character in dl), corrupts rax, rcx
+;No checks at all, internal function
 kp_replace_single_dollar_symbol:
     
     push rdi
@@ -1577,25 +1565,25 @@ kp_replace_single_dollar_symbol:
     pop  rdi
     ret
 
-;test function, SIMD version of strlen
+;Test function, SIMD version of strlen
 ;rcx holds string start
-;really driving fast and still need a seatbelt, annoying
+;Really, driving a flying car and still need a seatbelt, so annoying
 kp_simd_strlen_fastcall_win64:
-    ;because using movdqu unaligned version, need to keep checking page boundary
+    ;Because using movdqu unaligned version, must constantly check page boundaries
 
     mov r9,  16
     xor rdx, rdx
 
     pxor xmm1, xmm1
 
-.scan_loop:
+.label:
 
     ;check page boundary
     mov r10, rcx
     and r10, 0xFFF ;take high 12 bits
     cmp r10, 4080  ;compare with last page start
-    ja  .slow_path
-    ;if near page boundary switch to slow branch
+    ja  .slow
+    ;if near page boundary, switch to slow branch
 
     movdqu   xmm0, [rcx]
     pcmpeqb  xmm0, xmm1
@@ -1607,7 +1595,7 @@ kp_simd_strlen_fastcall_win64:
     add rdx, r9
     add rcx, r9
 
-    jmp .scan_loop
+    jmp .label
 
 .found:
 
@@ -1617,7 +1605,7 @@ kp_simd_strlen_fastcall_win64:
 
     ret
 
-.slow_path:
+.slow:
 
     push rdi
     mov  rdi, rcx
@@ -1627,26 +1615,26 @@ kp_simd_strlen_fastcall_win64:
     mov  r11, rcx
     cld
     repne scasb
-    jne  .page_boundary_cross
+    jne  .nofd
     neg  rcx
     lea  rcx, [r11+rcx-1]
     lea  rax, [rdx+rcx]
     pop  rdi
     ret
     
-.page_boundary_cross:
+.nofd:
     add rdx, r11
     mov rcx, rdi
     pop rdi
-    jmp .scan_loop
+    jmp .label
     
 ;SSE version of strlen, rcx=src
-;ONE OF the weirdest functions I've written so far
-;leave comments for 20,000 years later
-;so clever that changing one letter can completely crash it
+;ONE OF the weirdest functions written so far
+;Leave the comments for 20,000 years later
+;So ingenious that changing one letter might completely crash it
 kp_sse_strlen_fastcall_win64:
-;I really don't want to write comments for this, one register used as 4 variables
-;no mask merging, only 16 bytes at a time
+;I really don't want to write this comment; one register is used as 4 variables
+;No mask merging, can only process 16 bytes at a time
 
     push rdi
 
@@ -1675,7 +1663,7 @@ kp_sse_strlen_fastcall_win64:
 
     pxor xmm1, xmm1
 
-.scan_loop:
+.label:
 
     movdqa   xmm0, [rcx]
     pcmpeqb  xmm0, xmm1
@@ -1683,14 +1671,14 @@ kp_sse_strlen_fastcall_win64:
 
     test r8, r8
 
-    jnz .sse_found
+    jnz .ssefound
 
     add rcx, r9
     add rdx, r9
 
-    jmp .scan_loop
+    jmp .label
 
-.sse_found:
+.ssefound:
 
     bsf r8d, r8d
 
@@ -1710,11 +1698,11 @@ kp_sse_strlen_fastcall_win64:
 
     ret
 
-;test function, copy memory with MOVSB
-;suggest using on CPUs supporting ERMSB
+;Test function, copy memory with MOVSB
+;Recommended on CPUs supporting ERMSB
 ;(src,srclen,dst,dstlen)
 kp_ermsb_fastcall_win64:
-;what meaning does this kind of function have, just so C can use it
+;Does this kind of function have any meaning? Just so it can be used in C
 
     cld
 
@@ -1743,20 +1731,20 @@ kp_ermsb_fastcall_win64:
 
 
 
-;read binary as hexadecimal, and convert to hexadecimal ASCII text
-;(source, source length, destination, destination length) units bytes
-;return: address of end \0, for chained calls overwrite from that address
-;still no null pointer checks, leave comments for tomorrow
+;Read binary as hexadecimal and convert to hexadecimal ASCII text
+;(source, source length, destination, destination length) units in bytes
+;Returns: address of trailing \0; when chaining, overwrite from this address
+;Still no null pointer checks; leave comments for tomorrow
 kp_hex2ascii_fastcall_win64:
 
     cld
 
     lea r10, [rdx*2]
     cmp r10, r9
-    jae .invalid_args
+    jae .mgd
     
     test rdx, rdx
-    jz   .invalid_args
+    jz   .mgd
     
     push rbx
     push rdi
@@ -1771,7 +1759,7 @@ kp_hex2ascii_fastcall_win64:
     ;rsi points to source
     
 ;loop
-.translate_loop:
+.xlatloop:
 
     lodsb
 
@@ -1789,7 +1777,7 @@ kp_hex2ascii_fastcall_win64:
     stosb
 
     dec rcx
-    jnz .translate_loop
+    jnz .xlatloop
 
     xor al, al
 
@@ -1803,27 +1791,27 @@ kp_hex2ascii_fastcall_win64:
 
     ret
 
-.invalid_args:
+.mgd:
     xor rax, rax
     ret
 
-;two ASCII as one byte
-;if you write A\0 at the end, table lookup probably won't execute
-;(source, source length, destination, destination length) units bytes
-;return: address after last data byte, for chained calls continue writing from that address
-;but you need to calculate remaining length yourself or use dynamic memory
+;Two ASCII characters as one byte
+;If the last thing you write is something like A\0, the table lookup will most likely not execute
+;(source, source length, destination, destination length) units in bytes
+;Returns: address after the last data byte; when chaining, continue writing from this address
+;But you need to calculate the remaining length yourself or use dynamic memory
 kp_ascii2hex_fastcall_win64:
 
     cld
 
     test rdx, rdx
-    jz   .invalid_args
+    jz   .mgd
 
     shl r9,  1
     cmp rdx, r9
-    ja  .invalid_args
+    ja  .mgd
 
-;main body
+;main text
 
     push rbx
     push rdi
@@ -1836,25 +1824,25 @@ kp_ascii2hex_fastcall_win64:
 
     lea rbx, [ascii2hex_xlatable] ;lookup table
 
-.translate_loop:
+.xlatloop:
 
-    lodsb;fetch
+    lodsb;load
 
     xlat;lookup table
 
     mov r9b, al ;temporarily store
     
-    lodsb;fetch
+    lodsb;load
 
     xlat;lookup table
 
-    shl r9b, 4   ;write back high bits
+    shl r9b, 4   ;write back to high bits
     or  al,  r9b ;merge
 
     stosb;store
 
     dec rcx
-    jnz .translate_loop
+    jnz .xlatloop
 
     lea rax, [rdi]
 
@@ -1864,20 +1852,20 @@ kp_ascii2hex_fastcall_win64:
 
     ret
 
-.invalid_args:
+.mgd:
 
     xor rax, rax
 
     ret
 
-;currently the best strlen
-;heavily modified SSE2 version
+;Currently the most usable strlen
+;Heavily modified SSE2 version
 ;rcx=src
 kp_sse2_strlen_fastcall_win64:
 
     mov rdx, rcx
     mov r9,  rcx
-    and rdx, -16 ;force align
+    and rdx, -16 ;brute-force align
     sub rcx, rdx
 
     pxor     xmm1, xmm1
@@ -1886,24 +1874,25 @@ kp_sse2_strlen_fastcall_win64:
     pmovmskb r8d,  xmm0
 
     shr r8d, cl ;remove useless mask
-    jnz .found  ;if not zero means found
+    jnz .found  ;non-zero means found
 
     test rdx, 16
-    ;check 32-byte alignment
-    jz   .sse_go  ;if fourth bit set, then adding sixteen is directly aligned to 32 bytes
-    add rdx, 16 ;otherwise still need to handle 16 bytes separately, then align
+    ;check alignment to 32
+    jz   .ssego  ;If the fourth bit is set, it means adding sixteen directly aligns to 32 bytes
+
+    add rdx, 16 ;Otherwise, still need to handle 16 bytes separately, then align
 
     movdqa   xmm0, [rdx]
     pcmpeqb  xmm0, xmm1
     pmovmskb r8d,  xmm0
 
     test r8d, r8d
-    jnz  .go_find
+    jnz  .gofind
 
 ;preparation
-.sse_go:
+.ssego:
     add rdx, 16
-.sse_loop:
+.sseloop:
 
     movdqa   xmm0, [rdx]
     movdqa   xmm2, [rdx+16]
@@ -1915,12 +1904,12 @@ kp_sse2_strlen_fastcall_win64:
     shl  eax, 16   ;mask high bits
     or   r8d, eax  ;merge mask
     test r8d, r8d
-    jnz  .sse_found
+    jnz  .ssefound
 
     add rdx, 32
-    jmp .sse_loop
+    jmp .sseloop
 
-.go_find:
+.gofind:
 
     tzcnt eax, r8d
     sub   rdx, r9
@@ -1934,7 +1923,7 @@ kp_sse2_strlen_fastcall_win64:
 
     ret
 
-.sse_found:
+.ssefound:
 
     tzcnt eax, r8d
 
@@ -1942,7 +1931,7 @@ kp_sse2_strlen_fastcall_win64:
     add rax, rdx
     ret
 
-;heavily modified AVX2 version, similar to SSE2 version, too lazy to comment
+;Heavily modified AVX2 version, similar to SSE2 version, too lazy to comment
 ;rcx=src
 kp_avx2_strlen_fastcall_win64:
 
@@ -1960,8 +1949,8 @@ kp_avx2_strlen_fastcall_win64:
     jnz .found
 
     test rdx, 32
-    ;check 64-byte alignment
-    jz   .avx_go
+    ;check alignment to 64
+    jz   .avxgo
 
     add rdx, 32
 
@@ -1970,11 +1959,11 @@ kp_avx2_strlen_fastcall_win64:
     vpmovmskb r8d,  ymm2
 
     test r8d, r8d
-    jnz  .go_find
+    jnz  .gofind
 
-.avx_go:
+.avxgo:
     add rdx, 32
-.avx_loop:
+.avxloop:
 
     vmovdqa   ymm0, [rdx]
     vmovdqa   ymm2, [rdx+32]
@@ -1986,12 +1975,12 @@ kp_avx2_strlen_fastcall_win64:
     shl  rax, 32
     or   r8,  rax
     test r8,  r8
-    jnz  .avx_found
+    jnz  .avxfound
 
     add rdx, 64
-    jmp .avx_loop
+    jmp .avxloop
 
-.go_find:
+.gofind:
 
     tzcnt rax, r8
     sub   rdx, r9
@@ -2005,7 +1994,7 @@ kp_avx2_strlen_fastcall_win64:
     vzeroupper
     ret
 
-.avx_found:
+.avxfound:
 
     tzcnt rax, r8
     vzeroupper
@@ -2013,16 +2002,16 @@ kp_avx2_strlen_fastcall_win64:
     add   rax, rdx
     ret
 
-;wrap CreateFileW, return value follows API, but failure is 0
+;Wrapper for CreateFileW; return value follows the API, but failure is 0
 ;int(lpFileName,dwDesiredAccess,dwShareMode,dwCreationDisposition)
-;lpSecurityAttributes passes NULL, hTemplateFile passes NULL
-;dwFlagsAndAttributes passes FILE_ATTRIBUTE_NORMAL
-;no checks at all
+;Pass NULL for lpSecurityAttributes, pass NULL for hTemplateFile
+;Pass FILE_ATTRIBUTE_NORMAL for dwFlagsAndAttributes
+;No checks at all
 kp_win32api_createfile_w_fastcall_win64:
     
     adod
 
-    push r15 ;junk alignment
+    push r15 ;garbage alignment
 
     push NULL
     push FILE_ATTRIBUTE_NORMAL
@@ -2041,11 +2030,11 @@ kp_win32api_createfile_w_fastcall_win64:
 
     pdod
 
-    ret;yes really this short
+    ret;Yep, it's really just this little
 
-;wrap GetFileSizeEx
+;Wrapper for GetFileSizeEx
 ;int(hFile,lpFileSize)
-;same as API, failure returns 0, success non-zero
+;Same as API: failure returns 0, success non-zero
 kp_win32api_get_file_size_ex_fastcall_win64:
 
     adod
@@ -2055,13 +2044,13 @@ kp_win32api_get_file_size_ex_fastcall_win64:
 
     pdod
 
-    ret;probably the shortest one
+    ret;Probably the shortest one
 
-;wrap ReadFile
+;Wrapper for ReadFile
 ;int(hFile,lpBuffer,nNumberOfBytesToRead,lpNumberOfBytesRead)
-;behavior basically same as API, 5th parameter always NULL
+;Behavior basically same as API; the 5th parameter is always NULL
 ;nNumberOfBytesToRead, how many bytes to read. DWORD, 32-bit.
-;lpNumberOfBytesRead, pointer to a DWORD, API writes "how many actually read" into it. This value may be less than requested.
+;lpNumberOfBytesRead, pointer to a DWORD; the API writes how many were actually read. This value may be less than what you wanted to read.
 kp_win32api_read_file_fastcall_win64:
 
     adod
@@ -2076,7 +2065,7 @@ kp_win32api_read_file_fastcall_win64:
 
     ret
 
-; wrap WriteFile
+; Wrapper for WriteFile
 ;(handle, source, source length, actual written pointer)
 ;(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten)
 kp_win32api_write_file_fastcall_win64:
@@ -2093,7 +2082,7 @@ kp_win32api_write_file_fastcall_win64:
 
     ret
 
-;wrap SetFilePointerEx
+;Wrapper for SetFilePointerEx
 ;(handle, offset, new position pointer, starting position)
 ;(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod)
 kp_win32api_set_file_pointer_ex_fastcall_win64:
@@ -2106,9 +2095,9 @@ kp_win32api_set_file_pointer_ex_fastcall_win64:
 
     pdod
 
-    ret;shortest!
+    ret;The shortest!
 
-;get file pointer
+;Get file pointer
 ;(handle, 64-bit variable pointer)
 kp_win32api_get_file_pointer_ex_fastcall_win64:
 
@@ -2126,7 +2115,7 @@ kp_win32api_get_file_pointer_ex_fastcall_win64:
 
     ret
 
-;wrap CloseHandle
+;Wrapper for CloseHandle
 ;(handle)
 kp_win32api_close_handle_fastcall_win64:
 
@@ -2140,7 +2129,7 @@ kp_win32api_close_handle_fastcall_win64:
 
     ret
 
-;wrap MessageBoxW
+;Wrapper for MessageBoxW
 kp_win32api_msgbox_w_fastcall_win64:
 
     adod
@@ -2153,7 +2142,7 @@ kp_win32api_msgbox_w_fastcall_win64:
 
     ret
 
-;wrap WideCharToMultiByte
+;Wrapper for WideCharToMultiByte
 ;(source, source length, destination, destination byte length)
 kp_win32api_ezutf16le2utf8_fastcall_win64:
 
@@ -2180,8 +2169,8 @@ kp_win32api_ezutf16le2utf8_fastcall_win64:
 
 
 
-;wrap VirtualAlloc
-;(address, size, allocation type, protection attribute)
+;Wrapper for VirtualAlloc
+;(address, size, allocation type, protection attributes)
 ;(lpAddress, dwSize, flAllocationType, flProtect)
 kp_win32api_virtual_alloc_fastcall_win64:
 
@@ -2197,7 +2186,7 @@ kp_win32api_virtual_alloc_fastcall_win64:
 
 
 
-;wrap VirtualFree
+;Wrapper for VirtualFree
 ;(address, size, free type)
 ;(lpAddress, dwSize, dwFreeType)
 kp_win32api_virtual_free_fastcall_win64:
@@ -2212,19 +2201,19 @@ kp_win32api_virtual_free_fastcall_win64:
 
     ret
 
-;originally first step of char ascii_hex formatting
-;text grouping, byte-level processing, only suitable for ascii and utf8
-;you can pass a negative parameter 4 to ignore (disable) length check
-; you can pass a negative parameter 6 to ignore (disable) newline feature
-;default uses space division, newline uses 0x0A0D (little endian) i.e. carriage return line feed
-;(source, source length, destination, destination length, bytes per group, groups per line)
-;srclen=0 exits directly, failure returns NULL, success returns pointer to destination end \0
+;Originally the first step of character ascii_hex formatting
+;Text grouping, byte-level processing, only suitable for ASCII and UTF-8
+;You can input a negative number for parameter 4 to ignore (disable) length checking
+; You can input a negative number for parameter 6 to ignore (disable) newline function
+;By default use spaces to divide, newline uses 0x0A0D (little-endian), i.e. CRLF
+;(source, source length, destination, destination length, how many bytes per group, how many groups per line)
+;srclen=0 exits directly; failure returns NULL; success returns pointer to destination trailing \0
 kp_text_format_divide_fastcall_win64:
-;I declare this kind of comment will be released for at least two months
+;I announce that I will abandon comments for at least two months
 
 ;check srclen and dstlen
 
-    ;put on a show of taking off pants to fart
+    ;perform a pointless act
     push rbp
     mov  rbp, rsp
 
@@ -2250,14 +2239,14 @@ kp_text_format_divide_fastcall_win64:
 
     test r10, r10
     jz   .error
-    ;0 bytes per group I can't help either
+    ;0 bytes per group, I can't help it
     test r11, r11
     jz   .error
 
     ;check rdx
     test rdx, rdx
     jz   .error
-    jns  .have_str_len
+    jns  .havestrlen
     push rcx
     push r8
     push r9
@@ -2269,7 +2258,7 @@ kp_text_format_divide_fastcall_win64:
     pop  r8
     pop  rcx
     mov  rdx, rax
-.have_str_len:
+.havestrlen:
     test rdx, rdx
     jz   .error
 
@@ -2280,15 +2269,15 @@ kp_text_format_divide_fastcall_win64:
     xor eax, eax
 
     test r9,  r9
-    jns  .r9_ok
+    jns  .r9ok
     bts  rax, 0  ;disable length check
 
-.r9_ok:
+.r9ok:
     test r11, r11
-    jns  .check_flags
+    jns  .chk
     bts  rax, 1   ;disable newline
 
-.check_flags:
+.chk:
 
     push rax
     push rdx
@@ -2302,9 +2291,9 @@ kp_text_format_divide_fastcall_win64:
 
     mov  r10, rax
     test edx, edx
-    jz   .align_groups
-    inc  r10      ;fallback for non-aligned
-.align_groups:
+    jz   .alnd
+    inc  r10      ;fallback for unaligned
+.alnd:
 ;next calculate how many lines
     mov rax, r10
     xor edx, edx
@@ -2314,16 +2303,16 @@ kp_text_format_divide_fastcall_win64:
 
     mov  r11, rax
     test rdx, rdx
-    jz   .lines_ok
+    jz   .ok
     inc  r11
-.lines_ok:
+.ok:
     pop rbx
     pop rdx
     pop rax
 
 ;length calculation
     
-;required length=source length+groups-lines+(lines-1)*2+1
+;required length = source length + groups - lines + (lines - 1) * 2 + 1
 ;(srclen+groups+lines-1)
     lea rdx, [rdx+r10]
     lea r15, [r11-1]
@@ -2337,33 +2326,33 @@ kp_text_format_divide_fastcall_win64:
 
     jmp .error
 
-;main body, two versions
+;main body, two
 ;respectively with newline and without
-;all beings equal main, all beings equal rdx, everything else same except rax's bit 1
+;All beings equal main, all beings equal rdx, everything else same except rax's bit 1
 .main:
 
     bt   rax, 1
-    jc   .disable_newline
+    jc   .disablenewline
     ;rcx=src,rdx=len,r8=dst,r10=groups,r11=lines,r12=objspergroup,r13=groupsperline
     push rdi
     push rsi
     mov  rsi, rcx
     mov  rdi, r8
-    ;big loop=lines-1
+    ;big loop = lines-1
     ;portal
     cmp  r11, 1
     je   .last
     lea  rcx, [r11-1]
-;big loop, total executes lines-1
-.big_loop:
+;big loop, executes lines-1 times total
+.big:
     push rcx
     mov  rax, 0x20
     mov  rcx, r13
     cmp  rcx, 1
-    jz   .one_group_per_line
+    jz   .onegpl
     dec  rcx
-    ;middle loop, each time executes groups per line -1
-    .mid_loop:
+    ;middle loop, each time executes groups per line - 1
+    .mid:
     push rcx
     ;small loop, copies one group and formats each time
     mov  rcx, r12
@@ -2371,16 +2360,16 @@ kp_text_format_divide_fastcall_win64:
     stosb
     pop  rcx
     dec  rcx
-    jnz  .mid_loop
+    jnz  .mid
     ;when groups per line is 1
-    .one_group_per_line:
+    .onegpl:
     mov  rcx, r12
     rep movsb
     mov  rax, 0x0A0D
     stosw
     pop  rcx
     dec  rcx
-    jnz  .big_loop
+    jnz  .big
 .last:
     lea  rax, [r11-1]
     mov  r15, r13
@@ -2391,18 +2380,18 @@ kp_text_format_divide_fastcall_win64:
     mov  rcx, rax
     mov  rax, 0x20
     cmp  rcx, 1
-    je   .real_last
+    je   .reallast
     dec  rcx
-    .last_loop:
+    .lastloop:
     push rcx
     mov  rcx, r12
     rep movsb
     stosb
     pop  rcx
     dec  rcx
-    jnz  .last_loop
+    jnz  .lastloop
 
-    .real_last:
+    .reallast:
     mov  rax,        r10
     dec  rax
     imul rax,        r12
@@ -2415,9 +2404,9 @@ kp_text_format_divide_fastcall_win64:
     mov rax, rdi
     pop rsi
     pop rdi
-    jmp .normal_exit
+    jmp .normalexit
 
-.disable_newline:
+.disablenewline:
 
     push rdi
     push rsi
@@ -2426,18 +2415,18 @@ kp_text_format_divide_fastcall_win64:
     mov  rcx, r10
     mov  rax, 0x20
     cmp  rcx, 1
-    je   .disable_last
+    je   .dislast
     dec  rcx
-    .disable_big_loop:
+    .disbig:
     push rcx
     mov  rcx, r12
     rep movsb
     stosb
     pop  rcx
     dec  rcx
-    jnz  .disable_big_loop
+    jnz  .disbig
 
-.disable_last:
+.dislast:
     mov  rax,        r10
     dec  rax
     imul rax,        r12
@@ -2450,7 +2439,7 @@ kp_text_format_divide_fastcall_win64:
     pop  rsi
     pop  rdi
 
-.normal_exit:
+.normalexit:
 
     pop r15
     pop r14
@@ -2468,49 +2457,51 @@ kp_text_format_divide_fastcall_win64:
 
     xor rax, rax
 
-    ret;wasted another whole day writing a pile of crap
+    ret;Wasted another whole day writing a pile of crap
 
-;utf8 decode single character function
-;rsi is assumed already set
-;rax=0 failure, success returns character code point
-;destroys rax, rdx
-;automatically decreases rcx
+;UTF-8 single character decode function
+;Assumes rsi is already set
+;rax=0 failure, on success returns character code point
+;Corrupts rax, rdx
+;Automatically decrements rcx
 kp_text_utf8_single_symbol_decode_inside:
 
-    xor eax,      eax
-    xor edx,      edx
-    mov [orirsi], rsi
+    xor eax, eax
+    xor edx, edx
+    mov r10, rsi
 
     lodsb
 
     bt ax, 7
     
-    jc  .not_ascii
-    ;ASCII character output directly
+    jc  .notascii
+    ;ASCII character directly out
     dec rcx
     ret
 
-.not_ascii:
+.notascii:
 
 
     bt  ax, 6
-    jnc .broken ;if starts with 10 then it's broken
+    jnc .broken ;if it starts with 10, it means it's broken
 
     bt  ax, 5
-    ;if starts with 110 then it's 2 bytes
-    jnc .two_byte
+    ;if it starts with 110, it means 2 bytes
+    jnc .word
 
     bt  ax, 4
-    ;if starts with 1110 then it's 3 bytes
-    jnc .three_byte
+    ;if it starts with 1110, it means 3 bytes
+    jnc .tri
 
-    ;seems utf8 max only 4 bytes, so directly enter main branch
-    jmp .four_byte
+    ;UTF-8 seems to have at most 4 bytes, so directly enter main branch
+    jmp .double
 
 ;2 bytes
-.two_byte:
+.word:
 
-    ;first process first byte
+    sub rcx, 2
+    js  .werr
+    ;process first byte first
     mov dl,  al ;110XXXXX
     and dl,  31 ; 0b11111
     shl dx,  6
@@ -2521,12 +2512,13 @@ kp_text_utf8_single_symbol_decode_inside:
     jc  .fail
     and al,  63
     or  ax,  dx
-    sub rcx, 2
     jmp .check
     
 ;3 bytes
-.three_byte:
+.tri:
 
+    sub rcx, 3
+    js  .terr
     mov dl,  al
     and dl,  15
     shl edx, 12
@@ -2545,12 +2537,13 @@ kp_text_utf8_single_symbol_decode_inside:
     jc  .fail
     and ax,  63
     or  eax, edx
-    sub rcx, 3
     jmp .check
 
 ;4 bytes
-.four_byte:
+.double:
 
+    sub rcx, 4
+    js  .derr
     mov dl,  al
     and dl,  7
     shl edx, 18
@@ -2578,7 +2571,6 @@ kp_text_utf8_single_symbol_decode_inside:
     jc  .fail
     and ax,  63
     or  eax, edx
-    sub rcx, 4
 
 .check:
 ;rax is already decoded
@@ -2590,15 +2582,15 @@ kp_text_utf8_single_symbol_decode_inside:
     ja  .fail
 
     cmp rax, 0xD800
-    jb  .normal_exit
+    jb  .normalexit
     cmp rax, 0xE000
     jb  .fail
 
-.normal_exit:
+.normalexit:
     ret
 
 .fail:
-    mov rsi,       [orirsi]
+    mov rsi,       r10
     mov word [r8], 0xFFFF
     xor rax,       rax
     ret
@@ -2608,24 +2600,40 @@ kp_text_utf8_single_symbol_decode_inside:
     xor eax, eax
     ret
 
-;utf8t16le main function
+.werr:
+    sub rsi, 2
+    xor eax, eax
+    ret
+
+.terr:
+    sub rsi, 3
+    xor eax, eax
+    ret
+
+.derr:
+    sub rsi, 4
+    xor eax, eax
+    ret
+
+;UTF-8 to UTF-16LE main function
 ;(source, source length, destination, destination length)
-;source length negative means auto-calculate, destination length must be at least 2 times source length
-;return value: error (null pointer, insufficient length) is 0,
-;character error: word pointed to by r8 is FFFF
+;if source length is negative, calculate automatically; destination length must be at least twice the source length
+;Return value: errors (null pointer, insufficient length) are 0,
+;character error: the word pointed to by r8 is FFFF
 kp_text_utf8t16le_main_fastcall_win64:
+;Note: internal function corrupts r10; if you need it, save it before calling the subroutine
 
     test rcx, rcx
-    jz   .null_pointer
+    jz   .npointer
     test r8,  r8
-    jz   .null_pointer
+    jz   .npointer
 
     test r9, r9
-    jz   .null_pointer
+    jz   .npointer
 
     test rdx, rdx
-    jz   .null_pointer
-    jns  .have_str_len
+    jz   .npointer
+    jns  .havestrlen
 
     push rcx
     push r8
@@ -2634,7 +2642,7 @@ kp_text_utf8t16le_main_fastcall_win64:
     adod
 
     sub  rsp, 32
-    ;written but not used is wasteful
+    ;Wrote it, wouldn't hurt to use it
     call kp_avx2_strlen_fastcall_win64
 
     pdod
@@ -2645,11 +2653,11 @@ kp_text_utf8t16le_main_fastcall_win64:
 
     mov rdx, rax
 
-.have_str_len:
+.havestrlen:
 
     lea rax, [rdx+rdx+2]
     cmp rax, r9
-    ja  .null_pointer
+    ja  .npointer
 
 .prepare:
 
@@ -2658,18 +2666,17 @@ kp_text_utf8t16le_main_fastcall_win64:
 
     mov rsi, rcx
     mov al,  [rsi+rdx]
-
     mov rdi, r8
 
     bt  ax, 7
-    jnc .check_bom
+    jnc .bthept
     bt  ax, 6
     jnc .error
 
-.check_bom:
+.bthept:
     cld
     mov  rcx, rdx
-    ;rdx should be unused now
+    ;rdx is probably not needed anymore
     .main:
     ;now rcx equals byte count
     call kp_text_utf8_single_symbol_decode_inside
@@ -2713,8 +2720,286 @@ kp_text_utf8t16le_main_fastcall_win64:
 
     ret
 
-;null pointer, empty city strategy, not big enough return
-.null_pointer:
+;null pointer, empty city ruse, insufficient size returns
+.npointer:
+    xor rax, rax
+    ret
+
+
+;fmt function reset version
+;(original filetime, struct pointer, flags, UTC offset - seconds)
+;Flags: bit0 enable UTC offset, bit1 enable milliseconds, bit2 enable microseconds
+;Struct unsigned long long, returns pure numbers instead of text
+;(year, month, day, hour, minute, second, millisecond, microsecond)
+;48~64 bytes; milliseconds and microseconds need to be enabled via flags
+;Default is UTC time; if Beijing time is needed, add the offset
+kp_improved_filetime_to_realtime_calc_fastcall_win64:
+
+    ;null pointer check
+    test rdx, rdx
+    jz   .null
+
+    push rbp
+    mov  rbp, rsp
+    push rbx
+    push rsi
+    
+    mov [rbp+16], rcx
+    ; mov [rbp+24], rdx
+    mov [rbp+32], r8
+
+    mov r11, rdx
+    ;save original struct pointer
+    mov rax, rcx
+    xor rdx, rdx
+    mov rcx, 10000000
+
+    div rcx
+
+    mov [rbp+24], rdx
+    ;save subticks
+
+    test r8,  1
+    je   .nooffset
+    add  rax, r9
+
+.nooffset:
+
+    lea rbx, [rbp-128]
+    ;rax equals total seconds
+    xor rdx, rdx
+
+    mov rcx, aoeg
+    add rax, rcx
+
+    mov rcx, seconds_per_day
+
+    div rcx
+    
+    ;rax=days, rdx=remaining seconds
+
+    mov [rbx],    rax
+    mov [rbx+8],  rdx
+    mov rcx,      days_per_400_years ;first calculate how many complete 400-year periods
+    xor rdx,      rdx
+    div rcx
+    mov [rbx+16], rax
+    mov rax,      rdx
+    mov rcx,      days_per_100_years ;continue dividing by 100 years
+    xor rdx,      rdx
+    div rcx
+    mov [rbx+24], rax
+    mov rax,      rdx
+    mov rcx,      days_per_4_years   ;calculate how many 4-year periods
+    xor rdx,      rdx
+    div rcx
+    mov [rbx+32], rax
+    mov [rbx+40], rdx
+    ;remaining days
+    
+    imul rax,[rbx+16],400
+    mov [rbx+48], rax
+    imul rax,[rbx+24],100
+    add [rbx+48], rax
+    imul rax,[rbx+32],4
+    add [rbx+48], rax
+    ;now all parts except less than 4 years have been calculated
+
+    ;first compare whether leap year handling is necessary
+    mov rax, [rbx+40]
+    cmp rax, 1460
+    je  .skipdivy
+    ;this label is later
+    mov rcx, 365
+    xor rdx, rdx
+    div rcx
+
+;1460 days directly teleports here    
+.skipdivn:    
+    
+    ;save remaining years and days
+    mov [rbx+56], rax
+    mov [rbx+64], rdx
+    mov r9,       rax
+    inc rax
+    add rax,      [rbx+48]
+    mov [r11],    rax
+
+    ; Comments written for AI after being angered to death by AI
+    ; tempyears = absolute year-1 - ((absolute year-1) mod 4)
+    ; = current 4-year period start - 1 (not absolute year!)
+    ; Example: 2000 -> 1996, 2001 -> 2000, 1900 -> 1896
+    ; Purpose: compare tempyears with tempyears+4 /100, /400
+    ;   equal -> no crossing; not equal -> crossed, continue checking 400
+    ; Absolute year = tempyears + 1 + nbofovys (complete years already passed in current period)
+
+    ;now check whether there is a century common year
+
+    lea r10, [mthlep]
+    lea rcx, [mthcom]
+    ;In VS Code, hovering the cursor over it shows the comment above the label (plugin required)
+
+    ; cmp    rax, 3
+    cmp    r9,  3
+    cmovne r10, rcx
+    jne    .lepsub
+
+    ;next we need to consider leap years
+    mov rax, [rbx+48]
+    mov r9,  rax
+    ;copy rax first; r9 is the original tempyears of rax
+    mov rcx, 100
+    xor rdx, rdx
+    div rcx
+    mov r8,  rax
+    ;save first result
+    mov rax, r9
+    add rax, 4
+    xor rdx, rdx
+    div rcx
+    cmp rax, r8
+    ;compare with first result
+    ;here it is still the leap year table
+    je  .lepsub
+    ;not equal means there is a century year
+    ;now check whether there is a 400-year leap year
+    mov rcx, 400
+    xor rdx, rdx
+    mov rax, r9
+    div rcx
+    mov r8,  rax
+    ;save first result
+    xor rdx, rdx
+    mov rax, r9
+    add rax, 4
+    div rcx
+    cmp rax, r8
+    ;compare; equal means it is not a 400-year leap, but a century common year
+
+    lea   rcx, [mthcom]
+    cmove r10, rcx
+
+;code reuse here
+;subtraction for calculating month
+;this expects rax to equal the extra days, already initialized below
+
+    .lepsub:
+    mov rax, [rbx+64]
+    xor rcx, rcx
+    xor rsi, rsi
+
+.leplop:
+    inc   rcx
+    ;Does anyone really remember that rsi has been zeroed? (Originally at the beginning)
+    ;OK now changed to zero it in advance
+    movzx rdx, byte [rbx+rsi]
+    inc   rsi
+    cmp   rax, rdx
+    
+    jb  .edlepsub
+    sub rax, rdx
+    jmp .leplop
+
+.edlepsub:    
+    ;rax=remaining days, rcx equals month
+    inc rax
+    ;this is the unfinished day, so add it
+    mov [r11+16], rax
+    mov [r11+8],  rcx
+
+;At this point year, month, day are calculated; next are hour, minute, second  
+    mov rax, [rbx+8]
+    xor rdx, rdx
+    mov rcx, 3600
+    div rcx
+
+    mov [r11+24], rax
+    
+    ;now give the remaining seconds in rdx to rax
+    xchg rax, rdx
+    xor  rdx, rdx
+    mov  rcx, 60
+    div  rcx
+
+    mov [r11+32], rax
+    mov [r11+40], rdx
+
+    mov r8, [rbp+32]
+    ;restore flags
+    
+    mov rax, [rbp+24]
+    ;get subticks
+    mov ecx, 10000
+    xor edx, edx
+    
+    div rcx
+
+    bt  r8, 1
+    jnc .exit
+
+    mov [r11+48], rax
+    ;milliseconds
+
+    bt  r8, 2
+    jnc .exit
+    
+    mov rax, rdx
+    xor edx, edx
+    mov ecx, 10
+
+    div rcx
+
+    mov [r11+56], rax
+
+.exit:
+
+    mov rax, [rbp+16]
+
+    pop rsi
+    pop rbx
+    pop rbp
+
+    ret
+
+
+
+    ;The real addresses in this part are deprecated
+
+    ; [rbx + 128]  realus       
+    ; [rbx + 120]  realms         
+    ; [rbx + 112]  realseconds    
+    ; [rbx + 104]  realminutes    
+    ; [rbx + 96]   realhours      
+    ; [rbx + 88]   realdays       
+    ; [rbx + 80]   realmonth      
+    ; [rbx + 72]   realyears
+
+    ; r11 points to struct! 
+
+    ; [rbx + 64]   overdays       
+    ; [rbx + 56]   nbofovys       
+    ; [rbx + 48]   tempyears      
+    ; [rbx + 40]   tempdays       
+    ; [rbx + 32]   nboffoys       
+    ; [rbx + 24]   nbofohys       
+    ; [rbx + 16]   nboffhys       
+    ; [rbx + 8]    seconds        
+    ; [rbx + 0]    days 
+
+
+
+;1460-day special handling label
+.skipdivy:
+    mov rax, 3
+    mov rdx, 365
+    jmp .skipdivn
+
+;Playing:《真昼の空の月》.mp3
+;Didn't expect to remake this pile of crap today (October 4, 2026)
+;Code recycling here
+
+;null pointer returns directly
+.null:
     xor rax, rax
     ret
 
@@ -2724,7 +3009,65 @@ kp_text_utf8t16le_main_fastcall_win64:
 
 
 
-;   Note:  end of code section (I really hate that NASM has no end marker and I keep making mistakes)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;   Note: end of code section (I really can't stand that NASM has no end marker and I always get it wrong)
 
 WARNING_SIGN:
 
@@ -2741,96 +3084,102 @@ ksignlabel:
 
     ;"We made a difficult decision":
 
-        ;Starting from September 6, 2026, this teaching demo no longer follows the GPL, and switches to KUDOS
-        ;Versions already released under GPL are unaffected
-        ;Because closed-source libraries or source-visible libraries need to be used, which does not meet GPL requirements
+        ;Starting September 6, 2026, this teaching demo no longer follows the GPL and switches to KUDOS
+        ;Versions previously released under GPL are not affected
+        ;Because it needs to use closed-source libraries or source-available libraries, which do not meet GPL requirements
 
     ;September 6, 2026
 
 ;What you must know:
 
-    ;It is not an open source license, only source-visible
-    ;If you are a student and study assembly for hobby purposes unrelated to work, you can freely research and study
-    ;This code is free, don't sell it for money
-    ;If you paid for it, you were scammed a little money
+    ;It does not use an open source license, only source-available
+    ;If you are a student and study assembly for a hobby unrelated to work, you can freely research and learn
+    ;This code is free; don't sell it for money
+    ;If you paid to obtain it, you were cheated out of a little money
     ;Free link: https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
 
 ;September 11, 2026
 
 ; What you must know:
 ;
-; It is not an open source license, only source-visible.
+; It is not an open source license, only source-available.
 ; This is not an OSI open source license.
 ;
-; This code is free, don't sell it for money.
-; If you paid for it, you were scammed.
+; This code is free; don't sell it for money.
+; If you paid to obtain it, you were cheated.
 ; Free link: https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
 ;
 ; Individuals may study assembly for hobby, private, non-commercial purposes.
-; Students may study, but only for personal private study, or the
-; "permitted educational uses" defined by the license: public free courses on mainstream online platforms.
+; Students may learn, but only for personal private study, or in accordance with the license-defined
+; "permitted educational uses": public free courses on mainstream online platforms.
 ;
-; It is forbidden to share the source code, modified versions, binaries with friends, classmates, colleagues,
+; It is prohibited to share source code, modified versions, or binary files with friends, classmates, colleagues,
 ; students, other departments, subsidiaries, or any third party.
-; Research cooperation, peer review, and paper publication follow Section 1.4 of the license.
+; Research collaboration, peer review, and paper publication are carried out under Section 1.4 of the license.
 ;
 ; Configuration files may be public, but must not contain source code, scripts, binaries,
 ; executable logic, or any material that can reconstruct the software.
 ;
 ; Commercial use, use by for-profit entities, evaluation, testing, bundling, AI training,
-; all require prior written paper consent from the project owner.
+; all require prior written consent on paper from the project owner.
 ;
 ;September 12, 2026
 
-; Damn, I'm going to die from exhaustion.
+; Damn, I'm going to die of exhaustion
 
 ;September 13, 2026
 
-; Is high school hell? Today is the September 18th remembrance day.
+; Is high school hell? Today is the 918 memorial day
 
 ;September 18, 2026
 
-; Happy Mid-Autumn Festival.
-; Happy my ass, struggling through homework together.
-; That bloated filetime_to_realtime I will rewrite sooner or later.
+; Happy Mid-Autumn Festival
+; Happy my ass, spending it with homework
+; That bloated filetime_to_realtime, I will rewrite it sooner or later
 
-; I'm really exhausted.
-; This bloated thing still has a bunch unfinished.
-; Even a bunch of instruction sets.
+; I'm really dying of exhaustion
+; This bloated thing still has a bunch of unfinished stuff
+; Even a bunch of instruction sets
 
-; Technically there is a bunch of technical debt.
-; Functionally there is a bunch unfinished.
-; Comments are also still missing a huge amount; AI-written comments are crap, not like human-written.
+; Technically there is a pile of technical debt
+; Functionally there are a bunch of unfinished things
+; Comments are still missing a huge amount; AI-written comments are crap, not like human-written ones
 
-; Still, Kikuri Hiroi is my favorite one.
+; Still, 廣井きくり is my favorite one
 
 ;September 24, 2026
 
-; Getting old really makes me useless; today I only wrote 02 functions.
-; The last day of September.
+; Getting old is really useless; today I only wrote 02 functions
+; The last day of September
 ; How can homework be used as a stool?
 
 ;September 30, 2026
 
-; Today is October 01, National Day.
+; Today is October 1st, National Day
 
-; On this happy day, I sincerely wish our motherland a happy birthday.
-; On this happy day, I sincerely wish our motherland a happy birthday.
+; On this happy day, I sincerely wish my motherland a happy birthday.
+; On this happy day, I sincerely wish my motherland a happy birthday.
 
-; I wrote a lot today, such as the AVX2 version of strlen.
+; Wrote a lot today, such as the AVX2 version of strlen
 
-; The code has passed 2000 lines, but most of it is comments, haha~
+; Code broke 2000 lines, but most of it is comments, haha~
 
 ;October 1, 2026
 
-; I hate string formatting.
-; I'm really done with this annoying thing.
-; Homework, I can't finish it.
+; I hate string formatting
+; I'm really done with this annoying thing
+; Homework, I can't finish it
 
 ;October 2, 2026
 
-; Added some comments, and because I feel unwell I don't want to do homework.
+; Added some comments, and because I feel unwell I don't want to do homework
 
 ;October 3, 2026
 
-;That's the bottom, that's all~
+; Major update: I rewrote that pile of crap filetime_to_realtime (yay)
+; But I only rewrote the calculation part, and changed some behavior, so I gave this remade function a new label
+; Fixed many unknown issues
+
+;October 4, 2026
+
+;That's the end, that's all~
