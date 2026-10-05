@@ -1808,17 +1808,21 @@ kp_hex2ascii_fastcall_win64:
 ;（源，源长，目标，目标长）单位字节
 ;返回：最后一个数据字节之后的地址，链式调用时从该地址继续写入
 ;但是你要自己算好剩余长度或者用动态内存
+;注意，不会补\0
 kp_ascii2hex_fastcall_win64:
 
-    cld
+    test rcx, rcx
+    jz   .mgd
 
     test rdx, rdx
     jz   .mgd
-
+    
     shl r9,  1
     cmp rdx, r9
     ja  .mgd
-
+    
+    cld
+    
 ;正文
 
     push rbx
@@ -2787,7 +2791,9 @@ kp_improved_filetime_to_realtime_calc_fastcall_win64:
 
 .nooffset:
 
-    ;不用怕大胆减，有栈页保护
+    sub rsp,   256
+    mov [rsp], rax
+    
     lea rbx, [rbp-128]
     ;rax等于总秒数
     xor rdx, rdx
@@ -2975,6 +2981,8 @@ kp_improved_filetime_to_realtime_calc_fastcall_win64:
     mov [r11+56], rax
 
 .exit:
+
+    add rsp, 256
 
     mov rax, [rbp+16]
 
@@ -3363,6 +3371,9 @@ kp_stredy_fastcall_win64:
     push rbp
     mov  rbp, rsp
 
+    test r9, r9
+    jz   .error
+
     mov r12, rcx
     mov r13, rdx
     mov r14, r8
@@ -3514,7 +3525,29 @@ kp_sse2_strcpy_fastcall_win64:
     ret
 
 
+;封装GetLastError
+;返回 DWORD（eax）错误码，0 表示无错误
+kp_win32api_get_last_error_fastcall_win64:
+    jmp GetLastError
 
+;打印64位，小端序封装
+;rcx=num,rdx=dst，不检查长度
+;不检查指针，实际检查
+;必须要留影子空间
+kp_u64_hex2ascii_fastcall_win64:
+
+    bswap rcx
+    mov   [rsp+8], rcx
+    
+    lea rcx, [rsp+8]
+
+    mov r8,  rdx
+    mov rdx, 8
+    mov r9,  17
+
+    ;现在rsp还是指向返回地址
+
+    jmp kp_hex2ascii_fastcall_win64
 
 
 
