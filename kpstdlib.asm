@@ -172,6 +172,7 @@ global  kp_win32api_get_file_pointer_ex_fastcall_win64
 global  kp_win32api_set_file_pointer_ex_fastcall_win64
 global  kp_win32api_get_file_size_ex_fastcall_win64
 global  kp_win32api_ezutf16le2utf8_fastcall_win64
+global  kp_improved_prtnum_frmrcx_fastcall_win64
 global  kp_win32api_virtual_alloc_fastcall_win64
 global  kp_win32api_virtual_free_fastcall_win64
 global  kp_win32api_close_handle_fastcall_win64
@@ -182,8 +183,10 @@ global  kp_text_utf8t16le_main_fastcall_win64
 global  kp_win32api_read_file_fastcall_win64
 global  kp_text_format_divide_fastcall_win64
 global  kp_win32api_msgbox_w_fastcall_win64
+global  kp_strend_wthrnl_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
+global  kp_ssse3_strchr_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
 global  kp_sse2_strlen_fastcall_win64
 global  kp_simd_strlen_fastcall_win64
@@ -195,16 +198,19 @@ global  kp_strcpy_fastcall_win64
 global  kp_strend_fastcall_win64
 global  kp_strled_fastcall_win64
 global  kp_strlen_fastcall_win64
+global  kp_strchr_fastcall_win64
 global  kp_ermsb_fastcall_win64
 
 ;======WIN32API======
 
 extern  ReadFile
 extern  WriteFile
+extern  ExitProcess
 extern  CloseHandle
 extern  CreateFileW
 extern  MessageBoxW
 extern  VirtualFree
+extern  GetLastError
 extern  VirtualAlloc
 extern  GetFileSizeEx
 extern  SetFilePointerEx
@@ -1189,6 +1195,7 @@ kp_strcpy_enddls_fastcall_win64:
 ;以0结尾的源，源长为负数自动算
 ;源长也是符号替换的数量（相当于）
 ;不返回指针，返回当bool，不固定值
+;多线程不安全
 kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     push rbp
     mov  rbp, rsp
@@ -1733,7 +1740,7 @@ kp_ermsb_fastcall_win64:
 
 
 ;把二进制按照16进制来读取，并且转换成16进制ascii文本
-;（源，源长，目标，目标长）单位字节
+;（源，源长，目标，目标长）单位字节，目标要比源长2倍
 ;返回：末尾 \0 的地址，链式调用时从该地址覆盖写入
 ;依旧不检查空指针，注释留给明天
 kp_hex2ascii_fastcall_win64:
@@ -2474,7 +2481,7 @@ kp_text_format_divide_fastcall_win64:
 
     ret;又浪费了一整天写了坨狗屎出来
 
-;utf8解码单字符函数
+;utf8解码单字符，内部函数
 ;默认已经设置好了rsi
 ;rax=0失败，成功返回字符码点
 ;破坏rax，rdx
@@ -2605,9 +2612,9 @@ kp_text_utf8_single_symbol_decode_inside:
     ret
 
 .fail:
-    mov rsi,       r10
-    mov word [r8], 0xFFFF
-    xor rax,       rax
+    mov rsi, r10
+    ; mov word [r8], 0xFFFF
+    xor rax, rax
     ret
 
 .broken:
@@ -2633,10 +2640,10 @@ kp_text_utf8_single_symbol_decode_inside:
 ;utf8t16le主函数
 ;（源，源长，目标，目标长）
 ;源长是负数自动算，目标长必须是源长的2倍及以上
-;返回值：错误（空指针，长度不够）为0，
-;字符错误：r8指向的word为FFFF
+;返回值：错误（空指针，长度不够，字符错误）为0
 kp_text_utf8t16le_main_fastcall_win64:
-;注意：内部函数破坏r10，如果需要用，call子函数前要保存
+    ;（已经取消）注意：内部函数破坏r10，如果需要用，call子函数前要保存
+    ;（已经取消）字符错误：r8指向的word为FFFF
 
     test rcx, rcx
     jz   .npointer
@@ -2908,7 +2915,7 @@ kp_improved_filetime_to_realtime_calc_fastcall_win64:
     inc   rcx
     ;真的还有人记得rsi已经清零了吗（原来是在开头）
     ;好了现在改成提前清零
-    movzx rdx, byte [rbx+rsi]
+    movzx rdx, byte [r10+rsi]
     inc   rsi
     cmp   rax, rdx
     
@@ -3075,7 +3082,7 @@ kp_ssse3_strchr_fastcall_win64:
     jz   .np
 
     mov  rcx, rdx
-    test r9b,  r9b
+    test r9b, r9b
     jz   kp_sse2_strlen_fastcall_win64
     ;依旧
 
@@ -3097,6 +3104,11 @@ kp_ssse3_strchr_fastcall_win64:
     mov  r8,  rax
 
 .havelen:
+
+    cmp r8, 64
+    jna kp_strchr_fastcall_win64
+
+    mov r11, r8
 
     movzx  r9d,  r9b
     movd   xmm1, r9d
@@ -3136,7 +3148,24 @@ kp_ssse3_strchr_fastcall_win64:
 
 ;准备工作
 .ssego:
-    add rdx, 16
+    add  rdx, 16
+    ;加点小手段
+    ;算已还要扫描的字节
+    mov  r10, rdx
+    sub  r10, r9
+    mov  rcx, r11
+    sub  rcx, r10
+    ;秘制手法
+    ;决定sse2循环次数
+    test rcx, 31
+    jz   .ald
+    add  rcx, 32
+    ;如果不对齐32字节要加一次
+.ald:
+
+    shr rcx, 5
+    ;位移得出来循环次数
+
 .sseloop:
 
     movdqa   xmm0, [rdx]
@@ -3152,14 +3181,17 @@ kp_ssse3_strchr_fastcall_win64:
     jnz  .ssefound
 
     add rdx, 32
-    jmp .sseloop
+    ; jmp .sseloop
+    dec rcx
+    jnz .sseloop
+    jmp .np
 
 .gofind:
 
     tzcnt eax, r8d
     sub   rdx, r9
     add   rax, rdx
-    
+
     ret
 
 .found:
@@ -3174,20 +3206,312 @@ kp_ssse3_strchr_fastcall_win64:
 
     sub rdx, r9
     add rax, rdx
+
+    cmp rax, r11
+    jae .np
+
     ret
 
 .np:
     xor eax, eax
     ret
 
+;可重入版本的打印rcx
+;（数字，目标）
+;目标剩余长度至少22，检查空指针
+kp_improved_prtnum_frmrcx_fastcall_win64:
+
+    test rdx, rdx
+    jz   .eterror
+
+    mov rax, rcx
+    mov r8,  rdx
+
+    push rdi
+    xor  rdi,       rdi
+    or   rax,       rax ;检查负数
+    jns  .isnotnegative ;不是负数就跳过
+    mov  byte [r8], 45  ;负数符号的ASCII
+    
+    inc rdi
+    neg rax ;负数转正
+
+;不是负数走这里
+.isnotnegative:
+    push rsi
+    push rcx
+    push rdx
+    push rbx
+    mov  rbx, 10
+    xor  rcx, rcx
+;除法循环
+.divlop:
+    inc  rcx
+    xor  rdx, rdx
+    div  rbx
+    push rdx
+    test rax, rax
+    jz   .preprt
+    jmp  .divlop
+;打印准备
+.preprt:
+    mov rbx, r8
+;写数字循环
+.loopofrewrite:
+    pop rdx
+    add rdx,       48
+    mov [rbx+rdi], dl
+    inc rdi
+    dec rcx
+    jnz .loopofrewrite
+
+    ; inc rdi ; 这个inc不能写
+    mov byte [rbx+rdi], 0
+
+    mov rax, r8
+    ;返回地址
+
+    pop rbx
+    pop rdx
+    pop rcx
+    pop rsi
+    pop rdi
+
+    ret 
+
+.eterror:
+    xor eax, eax
+    ret
+
+;末尾拼接字符串带上换行，4个参数
+;（源，源长，目标起始，目标缓冲区长）
+;源长度为负数时候自动算
+;返回末尾\0指针，失败返回0
+kp_strend_wthrnl_fastcall_win64:
+
+    push rbp
+    mov  rbp, rsp
+
+    ;检查空指针和0长度
+    test rcx, rcx
+    jz   .nullet
+    test r8,  r8
+    jz   .nullet
+    test r9,  r9
+    jz   .nullet
+    test rdx, rdx
+    jz   .nullet
+    cmp  r9,  2
+    jna  .nullet
+
+    ;正片开始
+
+    ; mov r10, rcx ; 备份源指针
+    push rcx
+    mov  rcx, r8 ; rcx = dst，给内部 strlen 用
+    
+    call kp_strlenled_inside
+    ; 返回：rax = 目标末尾\0指针，rcx = 目标当前长度
+
+    sub r9,  2
+    sub rcx, r9 ; 当前长度 - 总容量
+    neg rcx     ; 取反，得到剩余空间
+    js  .nullet ; 如果为负，说明目标空间已满，直接跑路
+
+    mov r9, rcx
+    ; mov rcx, r10
+    pop rcx
+
+;神秘标号
+.noauto:   
+
+    ;现在可以开始复制字符串
+    
+    mov r8, rax ; r8 = 目标末尾的 \0 地址
+    
+    call kp_strcpy_fastcall_win64
+
+    mov word [rax], 0x0A0D
+    
+    add rax, 2
+
+    mov byte [rax], 0
+    
+    mov rsp, rbp
+    pop rbp
+
+    ret
+
+;空指针和长度不够退出
+.nullet:
+    mov rsp, rbp
+    pop rbp
+    xor rax, rax
+    ret
+
+;循环拼接字符串
+;（地址表，表项数，目标，目标长）单位字节
+;不检查空指针
+kp_stredy_fastcall_win64:
+
+    push r15
+    push r14
+    push r13
+    push r12
+    push rdi
+    push rsi
+    push rbp
+    mov  rbp, rsp
+
+    mov r12, rcx
+    mov r13, rdx
+    mov r14, r8
+    mov r15, r9
+
+.callop:
+
+    test r13, r13
+    jz   .done
+
+    mov rcx, [r12]
+
+    mov rdx, -1
+    mov r8,  r14
+    mov r9,  r15
+
+    call kp_sse2_strcpy_fastcall_win64
+
+    test rax, rax
+    jz   .error
+
+    mov rcx, rax
+    sub rcx, r14
+    sub r15, rcx
+    mov r14, rax
+
+    add r12, 8
+    dec r13
+    jnz .callop
+
+.done:
+
+    mov rax,        r14
+    mov byte [rax], 0
+
+    mov rsp, rbp
+    pop rbp
+    pop rsi
+    pop rdi
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+    ret
+
+.error:
+
+    mov rsp, rbp
+    pop rbp
+    pop rsi
+    pop rdi
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+    xor eax, eax
+    ret
 
 
 
+;文本复制，SSE2版本
+;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
+;返回末尾0指针，rdx为负数自动算
+;警告：sse2_stredy调用它之前没留影子空间
+kp_sse2_strcpy_fastcall_win64:
 
+    test rcx, rcx
+    jz   .np
 
+    test r8, r8
+    jz   .np
 
+    test r9, r9
+    jz   .np
 
+    test rdx, rdx
+    jz   .zerolen
+    jns  .havelen
 
+    push rcx
+    push r8
+    push r9
+
+    call kp_sse2_strlen_fastcall_win64
+
+    pop r9
+    pop r8
+    pop rcx
+
+    mov rdx, rax
+
+.havelen:
+
+    test rdx, rdx
+    jz   .zerolen
+
+    cmp rdx, r9
+    jae .np
+
+    cmp rdx, 64
+    jb  kp_strcpy_fastcall_win64
+
+    ;比完长度r9就没用了，直接换
+
+    mov r9,  rdx
+    and r9,  15
+    shr rdx, 4
+
+.sseloop:
+
+    movdqu xmm0, [rcx]
+    movdqu [r8], xmm0
+
+    add r8,  16
+    add rcx, 16
+
+    dec rdx
+    jnz .sseloop
+
+    test r9, r9
+    jz   .done
+
+.left:
+    mov al,   [rcx]
+    mov [r8], al
+
+    inc rcx
+    inc r8
+
+    dec r9
+    jnz .left
+
+.done:
+    mov byte [r8], 0
+
+    mov rax, r8
+    ret
+
+.zerolen:
+    mov byte [r8], 0
+    
+    mov rax, r8
+    ret
+
+.np:
+    xor eax, eax
+    ret
 
 
 
@@ -3315,5 +3639,11 @@ ksignlabel:
 ; 修复了许多未知问题，有些老函数加上空指针检查
 
 ;2026年10月4日
+
+; 今天写了什么我不知道，总之很烦
+; 补充了单位一的注释，随后又新造了单位二十的屎山
+; 修复一些重大漏洞，更改部分函数行为
+
+;2026年10月5日
 
 ;到底了，就这么多~
