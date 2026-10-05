@@ -172,6 +172,7 @@ global  kp_win32api_get_file_pointer_ex_fastcall_win64
 global  kp_win32api_set_file_pointer_ex_fastcall_win64
 global  kp_win32api_get_file_size_ex_fastcall_win64
 global  kp_win32api_ezutf16le2utf8_fastcall_win64
+global  kp_win32api_get_last_error_fastcall_win64
 global  kp_improved_prtnum_frmrcx_fastcall_win64
 global  kp_win32api_virtual_alloc_fastcall_win64
 global  kp_win32api_virtual_free_fastcall_win64
@@ -183,6 +184,7 @@ global  kp_text_utf8t16le_main_fastcall_win64
 global  kp_win32api_read_file_fastcall_win64
 global  kp_text_format_divide_fastcall_win64
 global  kp_win32api_msgbox_w_fastcall_win64
+global  kp_u64_hex2ascii_fastcall_win64
 global  kp_strend_wthrnl_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
 global  kp_prtnum_frmrcx_fastcall_win64
@@ -190,10 +192,12 @@ global  kp_ssse3_strchr_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
 global  kp_sse2_strlen_fastcall_win64
 global  kp_simd_strlen_fastcall_win64
+global  kp_sse2_strcpy_fastcall_win64
 global  kp_sse_strlen_fastcall_win64
 global  kp_hex2ascii_fastcall_win64
 global  kp_ascii2hex_fastcall_win64
 global  kp_timefmt_fastcall_win64
+global  kp_stredy_fastcall_win64
 global  kp_strcpy_fastcall_win64
 global  kp_strend_fastcall_win64
 global  kp_strled_fastcall_win64
@@ -3529,6 +3533,10 @@ kp_sse2_strcpy_fastcall_win64:
 ;返回 DWORD（eax）错误码，0 表示无错误
 kp_win32api_get_last_error_fastcall_win64:
     jmp GetLastError
+
+;真·最短的一个
+;Playing：《The_Everlasting_Guilty_Crown》-EGOIST_-GC-S_FLAC
+;醉不成欢惨将别，别时茫茫江浸月
 
 ;打印64位，小端序封装
 ;rcx=num,rdx=dst，不检查长度
