@@ -155,6 +155,8 @@ default rel
 ; bu, date, dlsbur, dust, wasteimm 是全局静态缓冲区。
 ; 使用了这些地址的函数绝对、绝对、绝对不能在多线程中并发调用！
 
+; 我不推荐你用AVX2版本，它的性能通常反而比SSE2版本更差
+
 global  bu
 ; global  realseconds
 ; global  realminutes
@@ -205,6 +207,15 @@ global  kp_strlen_fastcall_win64
 global  kp_strchr_fastcall_win64
 global  kp_ermsb_fastcall_win64
 
+global  kp_win32api_get_module_handle_w_fastcall_win64
+global  kp_win32api_get_console_window_fastcall_win64
+global  kp_win32api_get_foreground_window_fastcall_win64
+global  kp_win32api_find_window_w_fastcall_win64
+global  kp_win32api_get_std_handle_fastcall_win64
+global  kp_win32api_alloc_console_fastcall_win64
+
+global  kp_avx2_strcpy_fastcall_win64
+
 ;======WIN32API======
 
 extern  ReadFile
@@ -214,10 +225,17 @@ extern  CloseHandle
 extern  CreateFileW
 extern  MessageBoxW
 extern  VirtualFree
+extern  FindWindowW
+extern  AllocConsole
 extern  GetLastError
 extern  VirtualAlloc
+extern  GetStdHandle
+extern  FindWindowExW
 extern  GetFileSizeEx
+extern  GetConsoleWindow
+extern  GetModuleHandleW
 extern  SetFilePointerEx
+extern  GetForegroundWindow
 extern  MultiByteToWideChar
 extern  WideCharToMultiByte
 
@@ -3446,6 +3464,10 @@ kp_stredy_fastcall_win64:
 ;警告：sse2_stredy调用它之前没留影子空间
 kp_sse2_strcpy_fastcall_win64:
 
+;2026年10月6日更改
+;优化了主循环，现在一次处理32字节
+;并且结尾使用movsb，尝试用mmx来保留reg
+
     test rcx, rcx
     jz   .np
 
@@ -3485,16 +3507,18 @@ kp_sse2_strcpy_fastcall_win64:
     ;比完长度r9就没用了，直接换
 
     mov r9,  rdx
-    and r9,  15
-    shr rdx, 4
+    and r9,  31
+    shr rdx, 5
 
 .sseloop:
 
-    movdqu xmm0, [rcx]
-    movdqu [r8], xmm0
+    movdqu xmm0,    [rcx]
+    movdqu [r8],    xmm0
+    movdqu xmm0,    [rcx+16]
+    movdqu [r8+16], xmm0
 
-    add r8,  16
-    add rcx, 16
+    add r8,  32
+    add rcx, 32
 
     dec rdx
     jnz .sseloop
@@ -3503,14 +3527,42 @@ kp_sse2_strcpy_fastcall_win64:
     jz   .done
 
 .left:
-    mov al,   [rcx]
-    mov [r8], al
+    ; mov al,   [rcx]
+    ; mov [r8], al
 
-    inc rcx
-    inc r8
+    ; inc rcx
+    ; inc r8
 
-    dec r9
-    jnz .left
+    ; dec r9
+    ; jnz .left
+
+;根据ABI，x87寄存器是易失的
+
+    ; movq mm0, rdi
+    ; movq mm1, rsi
+
+    push rdi
+    push rsi
+
+    mov rsi, rcx
+    mov rdi, r8
+
+    cld;还是加上吧
+
+    mov rcx, r9
+    rep movsb
+
+    mov r8,  rdi
+    mov rcx, rsi
+;这里赋值rcx只是为了保证状态一致
+
+    ; movq rdi, mm0
+    ; movq rsi, mm1
+
+    ; emms;用了mmx就要加上
+
+    pop rsi
+    pop rdi
 
 .done:
     mov byte [r8], 0
@@ -3556,6 +3608,229 @@ kp_u64_hex2ascii_fastcall_win64:
     ;现在rsp还是指向返回地址
 
     jmp kp_hex2ascii_fastcall_win64
+
+;句柄获取，无参数
+; 返回 HMODULE，失败返回 0
+kp_win32api_get_module_handle_w_fastcall_win64:
+    jmp GetModuleHandleW
+
+; 无参数
+; 返回 HWND，失败返回 0
+kp_win32api_get_console_window_fastcall_win64:
+    jmp GetConsoleWindow
+
+; 无参数
+; 返回 HWND，失败返回 0
+kp_win32api_get_foreground_window_fastcall_win64:
+    jmp GetForegroundWindow
+
+; rcx = lpClassName（宽字符，可为 NULL）
+; rdx = lpWindowName（宽字符，可为 NULL）
+; 返回 HWND，失败返回 0
+kp_win32api_find_window_w_fastcall_win64:
+    jmp FindWindowW
+
+; rcx = nStdHandle（STD_INPUT_HANDLE = -10 等）
+; 返回 HANDLE，失败返回 INVALID_HANDLE_VALUE 或 0
+kp_win32api_get_std_handle_fastcall_win64:
+    jmp GetStdHandle
+
+; 无参数
+; 成功返回非 0，失败返回 0
+; 注意：如果进程已经有控制台，会失败
+kp_win32api_alloc_console_fastcall_win64:
+    jmp AllocConsole
+
+
+
+
+;文本复制，SSE2版本爆改AVX2
+;没错我水更新！
+;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
+;返回末尾0指针，rdx为负数自动算
+;警告：sse2_stredy没有调用它
+kp_avx2_strcpy_fastcall_win64:
+
+;2026年10月6日更改
+;优化了主循环，现在一次处理64字节
+;并且结尾使用movsb，尝试用mmx来保留reg
+
+    test rcx, rcx
+    jz   .np
+
+    test r8, r8
+    jz   .np
+
+    test r9, r9
+    jz   .np
+
+    test rdx, rdx
+    jz   .zerolen
+    jns  .havelen
+
+    push rcx
+    push r8
+    push r9
+
+    call kp_sse2_strlen_fastcall_win64
+
+    pop r9
+    pop r8
+    pop rcx
+
+    mov rdx, rax
+
+.havelen:
+
+    test rdx, rdx
+    jz   .zerolen
+
+    cmp rdx, r9
+    jae .np
+
+    cmp rdx, 128
+    jb  .ermsb
+
+    ;比完长度r9就没用了，直接换
+
+    mov r9,  rdx
+    and r9,  63
+    shr rdx, 6
+
+.avxloop:
+
+    vmovdqu ymm0,    [rcx]
+    vmovdqu [r8],    ymm0
+    vmovdqu ymm0,    [rcx+32]
+    vmovdqu [r8+32], ymm0
+
+    add r8,  64
+    add rcx, 64
+
+    dec rdx
+    jnz .avxloop
+
+    test r9, r9
+    jz   .done
+
+.left:
+    ; mov al,   [rcx]
+    ; mov [r8], al
+
+    ; inc rcx
+    ; inc r8
+
+    ; dec r9
+    ; jnz .left
+
+;根据ABI，x87寄存器是易失的
+
+    ; movq mm0, rdi
+    ; movq mm1, rsi
+
+    push rdi
+    push rsi
+
+    mov rsi, rcx
+    mov rdi, r8
+
+    cld;还是加上吧
+
+    mov rcx, r9
+    rep movsb
+
+    mov r8,  rdi
+    mov rcx, rsi
+;这里赋值rcx只是为了保证状态一致
+
+    ; movq rdi, mm0
+    ; movq rsi, mm1
+
+    ; emms;用了mmx就要加上
+
+    pop rsi
+    pop rdi
+
+.done:
+
+    vzeroupper
+
+    mov byte [r8], 0
+
+    mov rax, r8
+    ret
+
+.zerolen:
+
+    mov byte [r8], 0
+    
+    mov rax, r8
+    ret
+
+.np:
+    xor eax, eax
+    ret
+
+.ermsb:
+
+;根据ABI，x87寄存器是易失的
+
+    ; movq mm0, rdi
+    ; movq mm1, rsi
+
+    push rdi
+    push rsi
+
+    mov rsi, rcx
+    mov rdi, r8
+
+    cld;还是加上吧
+
+    mov rcx, r9
+    rep movsb
+
+    mov r8,  rdi
+    mov rcx, rsi
+;这里赋值rcx只是为了保证状态一致
+
+    ; movq rdi, mm0
+    ; movq rsi, mm1
+
+    ; emms;用了mmx就要加上
+
+    pop rsi
+    pop rdi
+
+    mov byte [r8], 0
+
+    mov rax, r8
+    ret
+
+;虽然说水分多了点，但是也是更新
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
