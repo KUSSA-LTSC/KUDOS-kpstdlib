@@ -1629,7 +1629,7 @@ kp_simd_strlen_fastcall_win64:
 
 .found:
 
-    tzcnt r8d, r8d
+    bsf r8d, r8d
 
     lea rax, [rdx+r8]
 
@@ -1910,8 +1910,9 @@ kp_sse2_strlen_fastcall_win64:
     pcmpeqb  xmm0, xmm1
     pmovmskb r8d,  xmm0
 
-    shr r8d, cl ;除去无用掩码
-    jnz .found  ;不为零说明找到
+    shr  r8d, cl ;除去无用掩码
+    test r8,  r8
+    jnz  .found  ;不为零说明找到
 
     test rdx, 16
     ;检查对齐32位
@@ -1948,21 +1949,21 @@ kp_sse2_strlen_fastcall_win64:
 
 .gofind:
 
-    tzcnt eax, r8d
-    sub   rdx, r9
-    add   rax, rdx
+    bsf rax, r8
+    sub rdx, r9
+    add rax, rdx
     
     ret
 
 .found:
 
-    tzcnt eax, r8d
+    bsf rax, r8
 
     ret
 
 .ssefound:
 
-    tzcnt eax, r8d
+    bsf rax, r8
 
     sub rdx, r9
     add rax, rdx
@@ -1989,8 +1990,9 @@ kp_avx2_strlen_fastcall_win64:
     vpcmpeqb  ymm2,ymm0,ymm1
     vpmovmskb r8d,  ymm2
 
-    shr r8d, cl
-    jnz .found
+    shr  r8d, cl
+    test r8,  r8
+    jnz  .found
 
     test rdx, 32
     ;检查对齐64位
@@ -2026,24 +2028,24 @@ kp_avx2_strlen_fastcall_win64:
 
 .gofind:
 
-    tzcnt rax, r8
-    sub   rdx, r9
-    add   rax, rdx
+    bsf rax, r8
+    sub rdx, r9
+    add rax, rdx
     vzeroupper
     ret
 
 .found:
 
-    tzcnt rax, r8
+    bsf rax, r8
     vzeroupper
     ret
 
 .avxfound:
 
-    tzcnt rax, r8
+    bsf rax, r8
     vzeroupper
-    sub   rdx, r9
-    add   rax, rdx
+    sub rdx, r9
+    add rax, rdx
     ret
 
 .np:
@@ -2692,6 +2694,7 @@ kp_text_utf8t16le_main_fastcall_win64:
     sub  rsp, 32
     ;写了不用白不用
     call kp_avx2_strlen_fastcall_win64
+    ; call kp_strlen_fastcall_win64
 
     pdod
 
@@ -3160,8 +3163,9 @@ kp_ssse3_strchr_fastcall_win64:
     pcmpeqb  xmm0, xmm1
     pmovmskb r8d,  xmm0
 
-    shr r8d, cl ;除去无用掩码
-    jnz .found  ;不为零说明找到
+    shr  r8d, cl ;除去无用掩码
+    test r8,  r8
+    jnz  .found  ;不为零说明找到
 
     test rdx, 16
     ;检查对齐32位
@@ -3218,21 +3222,21 @@ kp_ssse3_strchr_fastcall_win64:
 
 .gofind:
 
-    tzcnt eax, r8d
-    sub   rdx, r9
-    add   rax, rdx
+    bsf eax, r8d
+    sub rdx, r9
+    add rax, rdx
 
     ret
 
 .found:
 
-    tzcnt eax, r8d
+    bsf eax, r8d
 
     ret
 
 .ssefound:
 
-    tzcnt eax, r8d
+    bsf eax, r8d
 
     sub rdx, r9
     add rax, rdx
@@ -3396,6 +3400,9 @@ kp_stredy_fastcall_win64:
     test r9, r9
     jz   .error
 
+    test rdx, rdx
+    jz   .done
+
     mov r12, rcx
     mov r13, rdx
     mov r14, r8
@@ -3403,8 +3410,8 @@ kp_stredy_fastcall_win64:
 
 .callop:
 
-    test r13, r13
-    jz   .done
+    ; test r13, r13
+    ; jz   .done
 
     mov rcx, [r12]
 
@@ -3461,7 +3468,7 @@ kp_stredy_fastcall_win64:
 ;文本复制，SSE2版本
 ;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
 ;返回末尾0指针，rdx为负数自动算
-;警告：sse2_stredy调用它之前没留影子空间
+;警告：stredy调用它之前没留影子空间
 kp_sse2_strcpy_fastcall_win64:
 
 ;2026年10月6日更改
@@ -3648,7 +3655,7 @@ kp_win32api_alloc_console_fastcall_win64:
 ;没错我水更新！
 ;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
 ;返回末尾0指针，rdx为负数自动算
-;警告：sse2_stredy没有调用它
+;警告：stredy没有调用它
 kp_avx2_strcpy_fastcall_win64:
 
 ;2026年10月6日更改
@@ -3969,5 +3976,11 @@ ksignlabel:
 ; 注释欠着吧，没空补
 
 ;2026年10月6日
+
+; 我去坑死我哩，一个bug害我dbg看3天
+; 可恶的位移命令cl=0时候居然不会更新标志位，3天啊，新功能大部分砍掉了，就是那可恶的simd(SSE2,AVX2)的strlen在这么小的地方扑街啦
+; 要回学校了，呜呜呜呜呜~
+
+;2026年10月7日
 
 ;到底了，就这么多~
