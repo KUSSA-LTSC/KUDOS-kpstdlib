@@ -3607,8 +3607,11 @@ kp_win32api_get_std_handle_fastcall_win64:
 kp_win32api_alloc_console_fastcall_win64:
     jmp AllocConsole
 
-
-
+;Playing：《カラカラ》-結束バンド_-BTR-S_FLAC
+;あぁカラカラ騒ぐ思考飛ばして
+;前借りしてるこの命を使い切らなくちゃ
+;今この瞬間も
+;ダラダラ過ぎる日も愛して
 
 ;文本复制，SSE2版本爆改AVX2
 ;没错我水更新！
@@ -3937,7 +3940,9 @@ ksignlabel:
 ;2026年10月6日
 
 ; 我去坑死我哩，一个bug害我dbg看3天
-; 可恶的位移命令cl=0时候居然不会更新标志位，3天啊，新功能大部分砍掉了，就是那可恶的simd(SSE2,AVX2)的strlen在这么小的地方扑街啦
+; 可恶的位移命令cl=0时候居然不会更新标志位
+;3天啊，新功能大部分砍掉了
+;就是那可恶的simd(SSE2,AVX2)的strlen在这么小的地方扑街啦
 ; 要回学校了，呜呜呜呜呜~
 
 ;2026年10月7日
