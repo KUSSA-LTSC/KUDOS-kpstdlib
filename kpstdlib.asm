@@ -1136,12 +1136,14 @@ db 'This_is_a_sentence.' ;依旧标记
 ;返回末尾0指针，rdx为负数自动算
 kp_strcpy_enddls_fastcall_win64:
     
-    or   rcx, rcx
+    test rcx, rcx
     jz   .mgd
-    or   r8,  r8
+    test r8,  r8
+    jz   .mgd
+    test r9,  r9
     jz   .mgd
     ;据说有空指针
-    or   rdx, rdx
+    test rdx, rdx
     jns  .busu
     push rcx
     call kp_strlen_fastcall_win64 ;不要随便换成别的strlen，不然你要保存寄存器
@@ -1224,11 +1226,15 @@ kp_replace_single_dollar_symbol_wthcnt_fastcall_win64:
     push rsi
     push rdi
     
-    or r9, r9
-    jz .error
+    test rcx, rcx
+    jz   .error
+
+    test r9, r9
+    jz   .error
     ;目标长为0那还说啥
 
-    or   rdx, rdx
+    test rdx, rdx
+    jz   .error
     jns  .havelen
     mov  r10, rcx
     ;备份rcx
@@ -1764,7 +1770,7 @@ kp_ermsb_fastcall_win64:
 ;把二进制按照16进制来读取，并且转换成16进制ascii文本
 ;（源，源长，目标，目标长）单位字节，目标要比源长2倍
 ;返回：末尾 \0 的地址，链式调用时从该地址覆盖写入
-;依旧不检查空指针，注释留给明天
+;注释留给明天
 kp_hex2ascii_fastcall_win64:
 
     cld
@@ -1772,6 +1778,12 @@ kp_hex2ascii_fastcall_win64:
     lea r10, [rdx*2]
     cmp r10, r9
     jae .mgd
+
+    test rcx, rcx
+    jz   .mgd
+
+    test r8, r8
+    jz   .mgd
     
     test rdx, rdx
     jz   .mgd
@@ -2061,22 +2073,24 @@ kp_win32api_createfile_w_fastcall_win64:
     
     adod
 
-    push r15 ;垃圾对齐
+    ; push r15 ;垃圾对齐
+    push rax
 
     push NULL
     push FILE_ATTRIBUTE_NORMAL
     push r9
 
-    xor r9,  r9
-    xor r15, r15
+    xor r9, r9
+    ; xor r15, r15
 
     sub  rsp, 32
     call CreateFileW
 
+    xor   ecx, ecx
     cmp   rax, -1
-    cmove rax, r15
+    cmove rax, rcx
 
-    mov r15, [rsp+56] ;恢复
+    ; mov r15, [rsp+56] ;恢复
 
     pdod
 
@@ -2087,14 +2101,8 @@ kp_win32api_createfile_w_fastcall_win64:
 ;和api一样，失败返回0，成功非0
 kp_win32api_get_file_size_ex_fastcall_win64:
 
-    adod
-
-    sub  rsp, 32
-    call GetFileSizeEx
-
-    pdod
-
-    ret;最短小的吧估计
+    jmp GetFileSizeEx
+    ;最短小的吧估计
 
 ;封装ReadFile
 ;int(hFile,lpBuffer,nNumberOfBytesToRead,lpNumberOfBytesRead)
@@ -2137,60 +2145,28 @@ kp_win32api_write_file_fastcall_win64:
 ;（hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod）
 kp_win32api_set_file_pointer_ex_fastcall_win64:
 
-    adod
-
-    sub rsp, 32
-
-    call SetFilePointerEx
-
-    pdod
-
-    ret;最短的！
+    jmp SetFilePointerEx
 
 ;获取文件指针
 ;（句柄，64位变量指针）
 kp_win32api_get_file_pointer_ex_fastcall_win64:
 
-    adod
-
-    sub rsp, 32
-
     mov r8,  rdx
     xor rdx, rdx
     mov r9d, FILE_CURRENT
 
-    call SetFilePointerEx
-
-    pdod
-
-    ret
+    jmp SetFilePointerEx
 
 ;封装CloseHandle
 ;(handle)
 kp_win32api_close_handle_fastcall_win64:
 
-    adod
-
-    sub rsp, 32
-
-    call CloseHandle
-
-    pdod
-
-    ret
+    jmp CloseHandle
 
 ;封装MessageBoxW
 kp_win32api_msgbox_w_fastcall_win64:
 
-    adod
-
-    sub rsp, 32
-
-    call MessageBoxW
-
-    pdod
-
-    ret
+    jmp MessageBoxW
 
 ;封装WideCharToMultiByte
 ;（源，源长，目标，目标字节长）
@@ -2224,16 +2200,7 @@ kp_win32api_ezutf16le2utf8_fastcall_win64:
 ;（lpAddress, dwSize, flAllocationType, flProtect）
 kp_win32api_virtual_alloc_fastcall_win64:
 
-    adod
-
-    sub rsp, 32
-
-    call VirtualAlloc
-
-    pdod
-
-    ret
-
+    jmp VirtualAlloc
 
 
 ;封装VirtualFree
@@ -2241,15 +2208,7 @@ kp_win32api_virtual_alloc_fastcall_win64:
 ;（lpAddress, dwSize, dwFreeType）
 kp_win32api_virtual_free_fastcall_win64:
 
-    adod
-
-    sub rsp, 32
-
-    call VirtualFree
-
-    pdod
-
-    ret
+    jmp VirtualFree
 
 ;本来字符ascii_hex格式化第一步
 ;文本分组，字节级别处理，仅适合ascii及utf8
@@ -2742,7 +2701,7 @@ kp_text_utf8t16le_main_fastcall_win64:
 .exit:
     xor eax, eax
     stosw
-    mov rax, rdi
+    lea rax, [rdi-2]
     pop rdi
     pop rsi
     ret
@@ -3616,17 +3575,17 @@ kp_u64_hex2ascii_fastcall_win64:
 
     jmp kp_hex2ascii_fastcall_win64
 
-;句柄获取，无参数
+;句柄获取
 ; 返回 HMODULE，失败返回 0
 kp_win32api_get_module_handle_w_fastcall_win64:
     jmp GetModuleHandleW
 
-; 无参数
+
 ; 返回 HWND，失败返回 0
 kp_win32api_get_console_window_fastcall_win64:
     jmp GetConsoleWindow
 
-; 无参数
+
 ; 返回 HWND，失败返回 0
 kp_win32api_get_foreground_window_fastcall_win64:
     jmp GetForegroundWindow
@@ -3642,7 +3601,7 @@ kp_win32api_find_window_w_fastcall_win64:
 kp_win32api_get_std_handle_fastcall_win64:
     jmp GetStdHandle
 
-; 无参数
+
 ; 成功返回非 0，失败返回 0
 ; 注意：如果进程已经有控制台，会失败
 kp_win32api_alloc_console_fastcall_win64:
