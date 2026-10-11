@@ -4,85 +4,96 @@
 
 ;旧版声明保留：
 
-; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
-; All rights reserved.
-;
-; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
+    ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
+    ; All rights reserved.
+    ;
+    ; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
 
 ;KUSSA's standard library
 ;源码可见，仅供免费教育研究和学习
 ;注释以后再补充吧
 
-;这是什么：一个NASM项目（废话）
-;用来干嘛：为了用来写C代码
-;你为啥要看：关我屁事
-;能从里面学到东西吗：能，但是我还没补完注释
-;它可能不像网上其它教程那么模范
-;它更倾向于8086时代的老式写法
-;对于x86-64架构的指令集做出了决策和取舍
-;比起8086少了诸多限制
-;这是初学者版本吗：不是，我建议你先学别的语言或者先去看别的汇编教程
-;这是初学者版本吗：是的，这里几乎可以遇到大部分初学者容易错和迷惑的地方
-;能从中学到什么：很多，看你咋学
-;它标准化吗：从调用约定上来讲基本符合微软x64ABI
-;但是它的写法可能比较诡异
-;看不懂咋办：不看，或者你去问AI
-;是完全手写的吗：是的，可能让AI帮我做了一些参数上的检查，比如我曾经把GetFileSizeEx打错字成GetFileSizeEX
-;我经常让AI帮我看编译和链接报错，辅助查询intel SDM PDF
-;它好用吗：不一定，但是除了win32api封装以外都会返回NULL代表失败
-;NULL是个常量，等于零
-;怎么考虑更新内容的：我需要啥我就写啥
-;（事实上一个月过去了我的日志功能要用的函数都还没写完
-;它能替代CRT吗：现在能做不少事情，但是还不能完全替代
-;为啥要封装系统api：因为和windows.h不一定兼容，为了让我更好记住，为了能方便维护和移植，为了写程序更方便
-;再说你为啥要学汇编：它能让你更好理解代码的工作，以及解决非常多匪夷所思的BUG
-;但是学习汇编对于大多数人来讲并不容易
-;我是例外，我反而写C代码总是出问题，还不会修BUG
-;它性能会比CRT更好吗：不会，差不多，可能某些激进的函数会快一点点点
-;总之你要有一定的编程基础，而且你要能够有耐心去了解8086的指令或者x86的指令才能看懂大部分，注释不是保姆，只会写出来最重要的，容易错的
-;警告：内部函数，未完成函数，永远不能被导出，也不应该被修改，只是为了方便代码复用，用于特定场景下的业务服务
+    ; 这是什么：一个NASM项目（废话）
+    ; 用来干嘛：为了用来写C代码
+    ; 你为啥要看：关我屁事
+    ; 能从里面学到东西吗：能，但是我还没补完注释
+    ; 它可能不像网上其它教程那么模范
+    ; 它更倾向于8086时代的老式写法
+    ; 对于x86-64架构的指令集做出了决策和取舍
+    ; 比起8086少了诸多限制
+    ; 这是初学者版本吗：不是，我建议你先学别的语言或者先去看别的汇编教程
+    ; 这是初学者版本吗：是的，这里几乎可以遇到大部分初学者容易错和迷惑的地方
+    ; 能从中学到什么：很多，看你咋学
+    ; 它标准化吗：从调用约定上来讲基本符合微软x64ABI
+    ; 但是它的写法可能比较诡异
+    ; 看不懂咋办：不看，或者你去问AI
+    ; 是完全手写的吗：是的，可能让AI帮我做了一些参数上的检查，比如我曾经把GetFileSizeEx打错字成GetFileSizeEX
+    ; 我经常让AI帮我看编译和链接报错，辅助查询intel SDM PDF
+    ; 它好用吗：不一定，但是除了win32api封装以外都会返回NULL代表失败
+    ; NULL是个常量，等于零
+    ; 怎么考虑更新内容的：我需要啥我就写啥
+    ; （事实上一个月过去了我的日志功能要用的函数都还没写完
+    ; 它能替代CRT吗：现在能做不少事情，但是还不能完全替代
+    ; 为啥要封装系统api：因为和windows.h不一定兼容，为了让我更好记住，为了能方便维护和移植，为了写程序更方便
+    ; 再说你为啥要学汇编：它能让你更好理解代码的工作，以及解决非常多匪夷所思的BUG
+    ; 但是学习汇编对于大多数人来讲并不容易
+    ; 我是例外，我反而写C代码总是出问题，还不会修BUG
+    ; 它性能会比CRT更好吗：不会，差不多，可能某些激进的函数会快一点点点
+    ; 总之你要有一定的编程基础，而且你要能够有耐心去了解8086的指令或者x86的指令才能看懂大部分，注释不是保姆，只会写出来最重要的，容易错的
+    ; 警告：内部函数，未完成函数，永远不能被导出，也不应该被修改，只是为了方便代码复用，用于特定场景下的业务服务
+    ; 大部分函数都是时间顺序写的，也就是越往下面翻，越可能是我后来写的
 
 ;bash:
 
-;nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj 
-;gcc -o test.exe test.c kpstdlib.obj -nostdlib -lkernel32 -luser32 -mwindows -e main -ffreestanding -fno-stack-protector -fno-asynchronous-unwind-tables -O2
+    ; nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj 
+    ; gcc -o test.exe test.c kpstdlib.obj -nostdlib -lkernel32 -luser32 -mwindows -e main -ffreestanding -fno-stack-protector -fno-asynchronous-unwind-tables -O2
+    ; 注意：这份GCC的命令只是参考，或者说是我之前测试用过的编译命令，我现在用的是CL而不是GCC，所以，你如果要自己写C程序的话，不用看这GCC的编译命令
+
+    ; 注意事项：
+
+        ; 1.如果禁用了CRT，你需要手动指定入口点，千万不能用return 0返回，必须显式用ExitProcess否则程序会跑飞
+        ; 2.如果禁用了CRT，某些编译器或者链接器会自作多情检查有没有各种启动和初始化函数，这时候通常需要写一个空的来通过链接
+        ; 3.如果需要PDB调试符号，必须用微软的link，当然别的也不是不行，但是话摆在这
+        ; 4.代码通常是utf8保存的，对于cl需要加上/utf-8选项，而GCC就通常默认utf8
+        ; 5.没有头文件的这个库，你需要自己准备，或者让AI写，或者直接写extern，本身是和CRT以及系统API兼容的，但是链接的时候必须要kernel32和user32
+        ; 6.这份代码是免费观看的，但是不是开源
 
 ;新版声明：
 
-; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
-; All rights reserved.
-;
-; SPDX-License-Identifier: LicenseRef-KUDOS-Source-Available-2.5
-;
-; KUSSA's standard library
-; This is NOT an open source license. This is a source-available,
-; anti-commercial license.
-;
-; 本文件仅按 KUDOS SOURCE AVAILABLE LICENSE Version 2.5 授权。
-; 完整条款见项目根目录：
-; KUDOS SOURCE AVAILABLE LICENSE.txt
-;
-; 未经项目所有者事先纸质书面同意，禁止：
-; - 商业使用、营利实体使用、营利实体评估或测试；
-; - 将本软件或修改版分发、公开、上传、分享给任何第三方；
-; - 与商业相关捆绑包组合、链接或一起分发；
-; - 使用本软件训练、微调、蒸馏、评估任何 AI 或机器学习模型。
-;
-; 允许的用途仅限许可证明确规定的：
-; - 个人私人学习；
-; - 非营利组织对原始未修改软件的内部行政使用；
-; - 主流在线平台上的公开免费课程；
-; - 按第 1.4 条进行的非商业研究、同行评审和论文发表。
-;
-; 配置文件如不含源代码、脚本、二进制或可执行逻辑，可以公开共享。
+    ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
+    ; All rights reserved.
+    ;
+    ; SPDX-License-Identifier: LicenseRef-KUDOS-Source-Available-2.5
+    ;
+    ; KUSSA's standard library
+    ; This is NOT an open source license. This is a source-available,
+    ; anti-commercial license.
+    ;
+    ; 本文件仅按 KUDOS SOURCE AVAILABLE LICENSE Version 2.5 授权。
+    ; 完整条款见项目根目录：
+    ; KUDOS SOURCE AVAILABLE LICENSE.txt
+    ;
+    ; 未经项目所有者事先纸质书面同意，禁止：
+    ; - 商业使用、营利实体使用、营利实体评估或测试；
+    ; - 将本软件或修改版分发、公开、上传、分享给任何第三方；
+    ; - 与商业相关捆绑包组合、链接或一起分发；
+    ; - 使用本软件训练、微调、蒸馏、评估任何 AI 或机器学习模型。
+    ;
+    ; 允许的用途仅限许可证明确规定的：
+    ; - 个人私人学习；
+    ; - 非营利组织对原始未修改软件的内部行政使用；
+    ; - 主流在线平台上的公开免费课程；
+    ; - 按第 1.4 条进行的非商业研究、同行评审和论文发表。
+    ;
+    ; 配置文件如不含源代码、脚本、二进制或可执行逻辑，可以公开共享。
 
-;关于许可证：
+    ;关于许可证：
 
-; 这是个倾向于教育的许可证，排斥商业化
-; 不是一个开源许可证，但是它可以比较好的方便我以后用别人的闭源库
-; 当然，如果以后有机会，而且它本身可以独立实现所有除了系统功能以外的所有函数的时候，库的许可证很可能重新变回 GPLv3
+    ; 这是个倾向于教育的许可证，排斥商业化
+    ; 不是一个开源许可证，但是它可以比较好的方便我以后用别人的闭源库
+    ; 当然，如果以后有机会，而且它本身可以独立实现所有除了系统功能以外的所有函数的时候，库的许可证很可能重新变回 GPLv3
 
-;当然，想要不依赖第三方库、闭源库实现所有功能很难，我不可能学会所有东西
+    ;当然，想要不依赖第三方库、闭源库实现所有功能很难，我不可能学会所有东西
 
 ;……代码往下……
 
@@ -94,57 +105,301 @@
 ;看到这两行不用纠结，看不懂没关系
 ;默认栈对齐16自己就行
 
-; %macro adod 0
-;     push rbp
-;     mov rbp , rsp
-;     and rsp , -16
-; %endmacro
-
-; %macro pdod 0
-;     mov rsp,rbp
-;     pop rbp
-; %endmacro  
-
 ;kmarco.inc
 
-; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
-; All rights reserved.
-;
-; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
+    ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
+    ; All rights reserved.
+    ;
+    ; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
 
-; %macro adod 0
-;     push rbp
-;     mov rbp , rsp
-;     and rsp , -16
-; %endmacro
+    ; %macro adod 0
+    ;     push rbp
+    ;     mov rbp , rsp
+    ;     and rsp , -16
+    ; %endmacro
 
-; %macro pdod 0
-;     mov rsp,rbp
-;     pop rbp
-; %endmacro    
+    ; %macro pdod 0
+    ;     mov rsp,rbp
+    ;     pop rbp
+    ; %endmacro    
 
-; %macro kook 2-*
-;     push rbp
-;     mov  rbp, rsp
-;     and  rsp, -16
-;     %if (%0 & 1)
-;         push rax
-;     %endif
-;     %rep %0
-;         %rotate (%0 - 1)
-;         push %1
-;     %endrep
-;     sub rsp, 32
-; %endmacro
+    ; %macro kook 2-*
+    ;     push rbp
+    ;     mov  rbp, rsp
+    ;     and  rsp, -16
+    ;     %if (%0 & 1)
+    ;         push rax
+    ;     %endif
+    ;     %rep %0
+    ;         %rotate (%0 - 1)
+    ;         push %1
+    ;     %endrep
+    ;     sub rsp, 32
+    ; %endmacro
 
-; 等价于pdod
-; %macro kaak 0
-;     mov rsp, rbp
-;     pop rbp
-; %endmacro
+    ; 等价于pdod
+    ; %macro kaak 0
+    ;     mov rsp, rbp
+    ;     pop rbp
+    ; %endmacro
 
 bits    64
 default rel
+
+;遗产展示：
+
+    ; DATA SEGMENT
+    ;     DST    DB  'i love you so,but you don''t love me,so i will leave you'
+    ;     DSTLEN EQU $ - DST
+    ;     SRC    DB  'i will'
+    ;     SRCLEN EQU $ - SRC
+    ; DATA ENDS
+
+    ; CODE SEGMENT
+    ; ASSUME CS:CODE, DS:DATA
+    ; START:
+    ;     MOV AX, DATA
+    ;     MOV DS, AX
+
+    ;     MOV CX, DSTLEN
+    ;     MOV AX, SRCLEN
+    ;     MOV SI, OFFSET SRC
+    ;     MOV DI, OFFSET DST
+    ;     CALL SUB_LOCATENGRCPT
+
+    ;     PUSH AX
+    ;     MOV CX, 1
+    ;     CALL SUB_PRT_NUM_FROM_STACK_WITH_CX_TIME
+    ;     ADD  SP, 2
+
+    ;     MOV AH, 4CH
+    ;     XOR AL, AL
+    ;     INT 21H
+
+
+    ; SUB_LOCATENGRCPT:
+    ;     PUSH DI
+    ;     PUSH CX
+    ;     SUB  CX, AX
+    ;     INC  CX
+    ; LOCATE:
+    ;     PUSH CX
+    ;     MOV  CX, AX
+    ;     CALL SUB_CMPLTRNGRCPTINCRETSTC
+    ;     JC   MATCH_OK
+    ;     POP  CX
+    ;     INC  DI
+    ;     LOOP LOCATE
+    ;     CLC
+    ;     JMP  LOC_EXIT
+    ; MATCH_OK:
+    ;     POP  CX
+    ;     STC
+    ; LOC_EXIT:
+    ;     MOV  AX, DI
+    ;     POP  CX
+    ;     POP  DI
+    ;     RET
+
+
+    ; SUB_CMPLTRNGRCPTINCRETSTC:
+    ;     OR  CX, CX
+    ;     JNZ START_PROC
+    ;     CLC
+    ;     RET
+    ; START_PROC:
+    ;     PUSH AX
+    ;     PUSH DX
+    ;     PUSH CX
+    ;     PUSH SI
+    ;     PUSH DI
+
+    ; BJLOP:
+    ;     MOV AX, [SI]
+    ;     MOV DX, [DI]
+
+    ;     CMP AL, DL
+    ;     JE  AL_DL_OK
+
+    ;     CMP AL, 'A'
+    ;     JB  ALMMT
+    ;     CMP AL, 'Z'
+    ;     JA  ALMMT
+    ;     OR  AL, 20H
+    ; ALMMT:
+    ;     CMP DL, 'A'
+    ;     JB  DLMMT
+    ;     CMP DL, 'Z'
+    ;     JA  DLMMT
+    ;     OR  DL, 20H
+    ; DLMMT:
+    ;     CMP AL, DL
+    ;     JNE YMT
+
+    ; AL_DL_OK:
+    ;     DEC CX
+    ;     JZ  JCLMMT
+
+    ;     CMP AH, DH
+    ;     JE  AH_DH_OK
+
+    ;     CMP AH, 'A'
+    ;     JB  AHMMT
+    ;     CMP AH, 'Z'
+    ;     JA  AHMMT
+    ;     OR  AH, 20H
+    ; AHMMT:
+    ;     CMP DH, 'A'
+    ;     JB  DHMMT
+    ;     CMP DH, 'Z'
+    ;     JA  DHMMT
+    ;     OR  DH, 20H
+    ; DHMMT:
+    ;     CMP AH, DH
+    ;     JNE YMT
+
+    ; AH_DH_OK:
+    ;     ADD SI, 2
+    ;     ADD DI, 2
+    ;     LOOP BJLOP
+
+    ; JCLMMT:
+    ;     STC
+    ;     JMP RETMP
+    ; YMT:
+    ;     CLC
+    ; RETMP:
+    ;     POP DI
+    ;     POP SI
+    ;     POP CX
+    ;     POP DX
+    ;     POP AX
+    ;     RET
+
+
+    ; SUB_PRT_NUM_FROM_STACK_WITH_CX_TIME:
+    ;     PUSH    BP
+    ;     MOV     BP, SP
+    ;     PUSH    SI
+    ;     PUSH    AX
+    ;     PUSH    CX
+
+    ;     MOV     SI, 2
+    ; PRT_NUM_LOOP:
+    ;     ADD     SI, 2
+    ;     MOV     AX, [BP+SI]
+    ;     CALL    SUB_PRT_NUM_FROM_AX_NL
+    ;     LOOP    PRT_NUM_LOOP
+
+    ;     POP     CX
+    ;     POP     AX
+    ;     POP     SI
+    ;     POP     BP
+    ;     RET
+
+
+    ; SUB_PRT_NUM_FROM_AX_NL:
+    ;     PUSH    BX
+    ;     PUSH    AX
+    ;     PUSH    DX
+    ;     PUSH    CX
+
+    ;     MOV     BX, 10
+    ;     XOR     CX, CX
+    ;     XOR     DX, DX
+    ; DIV_LOOP:
+    ;     DIV     BX
+    ;     PUSH    DX
+    ;     INC     CX
+    ;     XOR     DX, DX
+    ;     OR      AX, AX
+    ;     JNZ     DIV_LOOP
+
+    ;     MOV     AH, 02H
+    ; PRT_LOOP:
+    ;     POP     DX
+    ;     ADD     DL, 48
+    ;     INT     21H
+    ;     LOOP    PRT_LOOP
+
+    ;     MOV     DL, 0DH
+    ;     INT     21H
+    ;     MOV     DL, 0AH
+    ;     INT     21H
+
+    ;     POP     CX
+    ;     POP     DX
+    ;     POP     AX
+    ;     POP     BX
+    ;     RET
+
+    ; CODE ENDS
+    ; END START
+
+; 遗产代码说明：
+
+    ; 1. 数据段
+    ;   DST    : 目标字符串，长度由 DSTLEN 定义
+    ;   SRC    : 待查找子串，长度由 SRCLEN 定义
+    ;   字符串中单引号使用双单引号转义
+    ;
+    ; 2. 主程序
+    ;   初始化 DS 段寄存器，传入目标串、子串的地址与长度
+    ;   调用子串查找子程序，将结果压栈后调用批量打印子程序输出
+    ;   打印完成后平衡栈指针，最后调用 DOS 中断退出程序
+    ;
+    ; 3. SUB_LOCATENGRCPT 子程序
+    ;   功能：大小写不敏感查找子串首次出现位置
+    ;   入口：DI = 目标串首址，SI = 子串首址
+    ;         CX = 目标串长度，AX = 子串长度
+    ;   出口：CF = 1 找到，AX = 匹配位置偏移地址
+    ;         CF = 0 未找到
+    ;   保护寄存器：CX、DI、SI
+    ;   逻辑：滑动窗口遍历目标串，逐位调用字符串比较子程序匹配
+    ;
+    ; 4. SUB_CMPLTRNGRCPTINCRETSTC 子程序
+    ;   功能：大小写不敏感字符串比较
+    ;   入口：SI = 源串偏移，DI = 目标串偏移，CX = 比较字节数
+    ;   出口：CF = 1 完全匹配，CF = 0 不匹配
+    ;   特别处理：CX = 0 直接返回不匹配，所有用到的寄存器现场保护
+    ;   逻辑：字访问加速，先直接比较原值，不相同则转小写后再比对
+    ;
+    ; 5. SUB_PRT_NUM_FROM_STACK_WITH_CX_TIME 子程序
+    ;   功能：批量打印栈中 16 位无符号十进制数，每个数自动换行
+    ;   入口：栈内预先压入 N 个数字，CX = 数字个数
+    ;   调用约定：调用后需自行 ADD SP, N*2 平衡栈指针
+    ;   保护寄存器：BP、SI、AX、CX
+    ;
+    ; 【栈帧布局】地址从高到低，栈向下生长
+    ;   高地址
+    ;       第 N 个数字参数      ← 最先压入，最后被取出
+    ;       ......
+    ;       第 2 个数字参数
+    ;       第 1 个数字参数      ← [BP+4]
+    ;       外层返回地址         ← [BP+2]
+    ;       旧 BP 值             ← [BP+0]，BP 固定指向此处
+    ;       保存的 SI            ← [BP-2]
+    ;       保存的 AX            ← [BP-4]
+    ;       保存的 CX            ← [BP-6]
+    ;       内层返回地址         ← 调用内层打印子程序时压入
+    ;       保存的 BX
+    ;       保存的 AX
+    ;       保存的 DX
+    ;       保存的 CX            ← 内层压完保护寄存器时的栈顶
+    ;       ......
+    ;       除法余数 N           ← DIV 循环逐位压入，栈动态向下增长
+    ;       ......
+    ;       除法余数 1（最低位）  ← 最后压入的余数，地址最低
+    ;   低地址
+    ;   注：打印完成后所有出栈操作会将 SP 恢复至进入时的状态
+    ;
+    ; 6. SUB_PRT_NUM_FROM_AX_NL 子程序
+    ;   功能：打印 AX 中的 16 位无符号十进制数，末尾自动回车换行
+    ;   入口：AX = 待打印的 16 位无符号整数（0 ~ 65535）
+    ;   保护寄存器：BX、AX、DX、CX
+    ;   算法：除 10 取余入栈，逆序出栈转 ASCII 输出，末尾补 CR+LF
+
+; 我两万年前草稿纸上写的
 
 ;立项日期无从考究，但是可以确定在2026年8月26日及以前
 
@@ -152,12 +407,17 @@ default rel
 ;为了方便调试和写，寄存器非必要全用r64
 ;标签都是瞎几把写的因为我英文不好
 
-; bu, date, dlsbur, dust, wasteimm 是全局静态缓冲区。
-; 使用了这些地址的函数绝对、绝对、绝对不能在多线程中并发调用！
+    ; bu, date, dlsbur, dust, wasteimm 是全局静态缓冲区。
+    ; 使用了这些地址的函数绝对、绝对、绝对不能在多线程中并发调用！
 
-; 我不推荐你用AVX2版本，它的性能通常反而比SSE2版本更差
+    ; 我不推荐你用AVX2版本，它的性能通常反而比SSE2版本更差
 
-global  bu
+    ; 对于kp_text_utf8t16le_main_fastcall_win64这种函数
+    ; 如果你要在C代码里面用，最好改成sse2版本，直接取消注释就行
+
+;对于fastcall_win64是导出函数的标志，表示它遵守调用约定，没有的默认是内部函数
+
+; global  bu
 ; global  realseconds
 ; global  realminutes
 ; global  realhours
@@ -165,11 +425,11 @@ global  bu
 ; global  realmonth
 ; global  realyears
 ; 这个dlsbur可以自定义符号，限制8个ascii
-global  dlsbur
+; global  dlsbur
 ; global  kp_prtnum_frmstk_wthrcx_rep_fastcall_win64
-global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
+; global  kp_replace_single_dollar_symbol_wthcnt_fastcall_win64
 global  kp_improved_filetime_to_realtime_calc_fastcall_win64
-global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
+; global  kp_filetime_to_realtime_frmrax_ret_fastcall_win64
 global  kp_win32api_get_file_pointer_ex_fastcall_win64
 global  kp_win32api_set_file_pointer_ex_fastcall_win64
 global  kp_win32api_get_file_size_ex_fastcall_win64
@@ -189,7 +449,7 @@ global  kp_win32api_msgbox_w_fastcall_win64
 global  kp_u64_hex2ascii_fastcall_win64
 global  kp_strend_wthrnl_fastcall_win64
 global  kp_strcpy_enddls_fastcall_win64
-global  kp_prtnum_frmrcx_fastcall_win64
+; global  kp_prtnum_frmrcx_fastcall_win64
 global  kp_ssse3_strchr_fastcall_win64
 global  kp_avx2_strlen_fastcall_win64
 global  kp_sse2_strlen_fastcall_win64
@@ -215,6 +475,10 @@ global  kp_win32api_get_std_handle_fastcall_win64
 global  kp_win32api_alloc_console_fastcall_win64
 
 global  kp_avx2_strcpy_fastcall_win64
+
+global  kp_strddy_fastcall_win64
+
+global  kp_memcmp_fastcall_win64
 
 ;======WIN32API======
 
@@ -2653,6 +2917,7 @@ kp_text_utf8t16le_main_fastcall_win64:
     sub  rsp, 32
     ;写了不用白不用
     call kp_avx2_strlen_fastcall_win64
+    ; call kp_sse2_strlen_fastcall_win64
     ; call kp_strlen_fastcall_win64
 
     pdod
@@ -3343,8 +3608,8 @@ kp_strend_wthrnl_fastcall_win64:
     ret
 
 ;循环拼接字符串
-;（地址表，表项数，目标，目标长）单位字节
-;不检查空指针
+;（地址表，表项数，目标，目标缓冲长）单位字节
+;不检查空指针，从目标开始写
 kp_stredy_fastcall_win64:
 
     push r15
@@ -3775,10 +4040,99 @@ kp_avx2_strcpy_fastcall_win64:
     mov rax, r8
     ret
 
-;虽然说水分多了点，但是也是更新
+;虽然说avx2版本水分多了点，但是也是更新
+
+;结尾版本stredy
+;（地址表，表项数，目标，目标缓冲长）
+;这个和stredy不一样的是从结尾开始写
+kp_strddy_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+    test rdx, rdx
+    jz   .np
+    test r8,  r8
+    jz   .np
+    test r9,  r9
+    jz   .np
+
+    push rcx
+    push rdx
+    push r8
+    push r9
+
+    mov rcx, r8
+
+    call kp_sse2_strlen_fastcall_win64
+    ; 返回长度在rax
+
+    pop r9
+    pop r8
+    pop rdx
+    pop rcx
+
+    add r8, rax
+    sub r9, rax
+    ; jb  .np
+    jnb kp_stredy_fastcall_win64
+    ; jmp kp_stredy_fastcall_win64
+
+.np:
+
+    xor eax, eax
+    ret
 
 
+;标量memcmp
+;其实就是纯封装，相等返回末尾指针，不相等返回0，并且往返回地址写偏移
+;（源，源长，目标，返回指针）
+kp_memcmp_fastcall_win64:
 
+    test rcx, rcx
+    jz   .np
+    test rdx, rdx
+    jz   .np
+    test r8,  r8
+    jz   .np
+    test r9,  r9
+    jz   .np
+
+    cld
+
+    push rsi
+    push rdi
+
+    mov rsi, rcx
+    mov rdi, r8
+
+    xchg rcx, rdx
+
+    repe cmpsb
+
+    jne .ue
+
+    mov rax, rdi
+    ; sub rax, rdx
+
+    pop rdi
+    pop rsi
+
+    ret
+
+.ue:
+
+    lea rax,  [rsi-1]
+    sub rax,  rdx
+    mov [r9], rax
+    pop rdi
+    pop rsi
+    ; xor eax,  eax
+    ; ret
+
+.np:
+
+    xor eax, eax
+    ret
 
 
 
@@ -3824,127 +4178,151 @@ ksignlabel:
 
 ;来自另一个项目的内容：
 
-    ;“我们做了个艰难的决定”：
+        ;“我们做了个艰难的决定”：
 
-        ;自从2026年9月6日起，这个教学demo不再遵循GPL协议，改用KUDOS
-        ;原来已经用GPL协议发布的版本不受影响
-        ;因为要使用闭源库或者是源码可见的库，不符合GPL要求
+            ;自从2026年9月6日起，这个教学demo不再遵循GPL协议，改用KUDOS
+            ;原来已经用GPL协议发布的版本不受影响
+            ;因为要使用闭源库或者是源码可见的库，不符合GPL要求
 
-    ;2026年9月6日
+        ;2026年9月6日
 
-;你必须要知道的：
+    ;你必须要知道的：
 
-    ;用的不是开源许可证，只是源码可见
-    ;如果你是学生并且进行与工作无关的学习汇编出于爱好的话可以随便研究学习
-    ;这个代码是免费的，不要拿去卖钱
-    ;如果你付费获得的话，说明你被骗了一点点钱
-    ;免费链接：https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
+        ;用的不是开源许可证，只是源码可见
+        ;如果你是学生并且进行与工作无关的学习汇编出于爱好的话可以随便研究学习
+        ;这个代码是免费的，不要拿去卖钱
+        ;如果你付费获得的话，说明你被骗了一点点钱
+        ;免费链接：https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
 
-;2026年9月11日
+    ; 2026年9月11日
+
+;接下来是这个文件的：
 
 ; 你必须要知道的：
-;
-; 用的不是开源许可证，只是源码可见。
-; 这不是 OSI 开源许可证。
-;
-; 这个代码是免费的，不要拿去卖钱。
-; 如果你付费获得的话，说明你被骗了。
-; 免费链接：https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
-;
-; 个人可以出于爱好、私人、非商业目的学习汇编。
-; 学生可以学习，但仅限个人私人学习，或符合许可证定义的
-; “允许的教育用途”：主流在线平台公开免费课程。
-;
-; 禁止把源代码、修改版、二进制文件分享给朋友、同学、同事、
-; 学生、其他部门、子公司或任何第三方。
-; 研究合作、同行评审、论文发表按许可证第 1.4 条执行。
-;
-; 配置文件可以公开，但不能包含源代码、脚本、二进制、
-; 可执行逻辑或任何能重构软件的材料。
-;
-; 商业使用、营利实体使用、评估、测试、捆绑、AI 训练，
-; 全部需要项目所有者事先纸质书面同意。
-;
-;2026年9月12日
 
-; 我去了我要累死了啊
+    ; 这个库用的不是开源许可证，只是源码可见。
+    ; 这不是 OSI 开源许可证。
+    ;
+    ; 这个代码是免费的，不要拿去卖钱。
+    ; 如果你付费获得的话，说明你被骗了。
+    ; 免费链接：https://github.com/KUSSA-LTSC/KUDOS-kpstdlib/
+    ;
+    ; 个人可以出于爱好、私人、非商业目的学习汇编。
+    ; 学生可以学习，但仅限个人私人学习，或符合许可证定义的
+    ; “允许的教育用途”：主流在线平台公开免费课程。
+    ;
+    ; 禁止把源代码、修改版、二进制文件分享给朋友、同学、同事、
+    ; 学生、其他部门、子公司或任何第三方。
+    ; 研究合作、同行评审、论文发表按许可证第 1.4 条执行。
+    ;
+    ; 配置文件可以公开，但不能包含源代码、脚本、二进制、
+    ; 可执行逻辑或任何能重构软件的材料。
+    ;
+    ; 商业使用、营利实体使用、评估、测试、捆绑、AI 训练，
+    ; 全部需要项目所有者（也就是我）事先纸质书面同意。
 
-;2026年9月13日
+    ; 2026年9月12日（最后修改于2026年10月10日）
 
-; 高中是地狱吗？今天可是918记难日
+;以上，到此为止，以下，杂七杂八。
 
-;2026年9月18日
+    ; 我去了我要累死了啊
 
-; 中秋快乐
-; 快乐个屁，共度作业
-; 那个臃肿的filetime_to_realtime我迟早给它重写
+; 2026年9月13日
 
-; 我真的是累死了要
-; 这臃肿的东西还有一堆没搞
-; 甚至还有一堆指令集
+    ; 高中是地狱吗？今天可是918记难日
 
-; 技术上有一堆技术债
-; 功能上有一堆未完成
-; 注释也还差了一大大堆，AI写出来的注释就是狗屎，不像人写的
+; 2026年9月18日
 
-; 还是广井菊里我最喜欢的一个
+    ; 中秋快乐
+    ; 快乐个屁，共度作业
+    ; 那个臃肿的filetime_to_realtime我迟早给它重写
 
-;2026年9月24日
+    ; 我真的是累死了要
+    ; 这臃肿的东西还有一堆没搞
+    ; 甚至还有一堆指令集
 
-; 人老了真是不中用了，今天就写了02个函数
-; 九月的最后一天啊
-; 作业咋能当凳子坐了啊
+    ; 技术上有一堆技术债
+    ; 功能上有一堆未完成
+    ; 注释也还差了一大大堆，AI写出来的注释就是狗屎，不像人写的
 
-;2026年9月30日
+    ; 还是广井菊里我最喜欢的一个
 
-; 今天是10月01日国庆
+; 2026年9月24日
 
-; 在这个幸福的日子里，我诚心祝祖国生日快乐。
-; 在這個幸福的日子裡，我誠心祝祖國生日快樂。
+    ; 人老了真是不中用了，今天就写了02个函数
+    ; 九月的最后一天啊
+    ; 作业咋能当凳子坐了啊
 
-; 今天写了很多吧，比如avx2版本的strlen
+; 2026年9月30日
 
-; 代码破2000行了，但是大部分都是注释，O(∩_∩)O哈哈~
-; 对对对，现在破3000行了（2026年10月4日）
+    ; 今天是10月01日国庆
 
-;2026年10月1日
+    ; 在这个幸福的日子里，我诚心祝祖国生日快乐。
+    ; 在這個幸福的日子裡，我誠心祝祖國生日快樂。
 
-; 我讨厌字符串格式化
-; 真的服了这烦人玩意
-; 作业啊，我写不完啊
+    ; 今天写了很多吧，比如avx2版本的strlen
 
-;2026年10月2日
+    ; 代码破2000行了，但是大部分都是注释，O(∩_∩)O哈哈~
+    ; 对对对，现在破3000行了（2026年10月4日）
 
-; 补充了一些注释，并且因为身体不适不想写作业
+; 2026年10月1日
 
-;2026年10月3日
+    ; 我讨厌字符串格式化
+    ; 真的服了这烦人玩意
+    ; 作业啊，我写不完啊
 
-; 重大更新：我把filetime_to_realtime坨狗屎重写啦（好耶），复制了两个函数并且赋予了全新的名字
-; 但是我只重写了计算部分，并且改变了部分行为，所以我给了这重制函数一个新的标号
-; 修复了许多未知问题，有些老函数加上空指针检查
+; 2026年10月2日
 
-;2026年10月4日
+    ; 补充了一些注释，并且因为身体不适不想写作业
 
-; 今天写了什么我不知道，总之很烦
-; 补充了单位一的注释，随后又新造了单位二十的屎山
-; 修复一些重大漏洞，更改部分函数行为
+; 2026年10月3日
 
-;2026年10月5日
+    ; 重大更新：我把filetime_to_realtime坨狗屎重写啦（好耶），复制了两个函数并且赋予了全新的名字
+    ; 但是我只重写了计算部分，并且改变了部分行为，所以我给了这重制函数一个新的标号
+    ; 修复了许多未知问题，有些老函数加上空指针检查
 
-; 没有大型更新，SSE2版本的strcpy延伸AVX2版本分支，但是性能可能还不如SSE2版本
-; 改进了部分函数，修改和补充了一点注释，评估了mmx寄存器的利弊，目前还没有启用，很可能在下一个复杂控制流程并且有条件PUSH的函数中用来备份寄存器
-; 国庆就要结束，这个文件也是差不多要有4000行了，但是代码有没1500行都是个问题，明天不会有更新了基本，明天就要回学习
-; 新坑没开成，很可能考虑用C写后面的程序，汇编的控制流程太差，虽然我觉得Jcc比if、while、do之类的好用多了，但是汇编传参太麻烦，而且没有表达式，不是难写，是费时间
-; 注释欠着吧，没空补
+; 2026年10月4日
 
-;2026年10月6日
+    ; 今天写了什么我不知道，总之很烦
+    ; 补充了单位一的注释，随后又新造了单位二十的屎山
+    ; 修复一些重大漏洞，更改部分函数行为
 
-; 我去坑死我哩，一个bug害我dbg看3天
-; 可恶的位移命令cl=0时候居然不会更新标志位
-;3天啊，新功能大部分砍掉了
-;就是那可恶的simd(SSE2,AVX2)的strlen在这么小的地方扑街啦
-; 要回学校了，呜呜呜呜呜~
+; 2026年10月5日
 
-;2026年10月7日
+    ; 没有大型更新，SSE2版本的strcpy延伸AVX2版本分支，但是性能可能还不如SSE2版本
+    ; 改进了部分函数，修改和补充了一点注释，评估了mmx寄存器的利弊，目前还没有启用，很可能在下一个复杂控制流程并且有条件PUSH的函数中用来备份寄存器
+    ; 国庆就要结束，这个文件也是差不多要有4000行了，但是代码有没1500行都是个问题，明天不会有更新了基本，明天就要回学习
+    ; 新坑没开成，很可能考虑用C写后面的程序，汇编的控制流程太差，虽然我觉得Jcc比if、while、do之类的好用多了，但是汇编传参太麻烦，而且没有表达式，不是难写，是费时间
+    ; 注释欠着吧，没空补
+
+; 2026年10月6日
+
+    ; 我去坑死我哩，一个bug害我dbg看3天
+    ; 可恶的位移命令cl=0时候居然不会更新标志位
+    ; 3天啊，新功能大部分砍掉了
+    ; 就是那可恶的simd(SSE2,AVX2)的strlen在这么小的地方扑街啦
+    ; 要回学校了，呜呜呜呜呜~
+
+; 2026年10月7日
+
+    ; 日志功能就留到两万年后吧，真不急
+    ; 现在的话可能最主要的就是小修小补，挺忙的
+    ; 我应该把更多心思放学习上，或者不，在学校待的够久了，回到家就啥也不想学
+    ; 至于更新日志，我也在考虑要不要写
+    ; 这份文件有没泄露什么隐私，或者版权内容呢，我也很好奇
+    ; 如果有的话，我在得知后会尽快删除的
+    ; 注释，对，我可以慢慢补充，现在可能很长一段时间不会写新功能
+    ; 水分的话，挺多的，这4000行的东西里面绿色的（注释）一大片
+    ; 取消导出了部分老函数，但是没有改变行为，如果需要的话，重新global就好
+    ; 目前我没有维护任何头文件，我自己测试用的也是让AI写的
+    ; 如果用头文件的话，推荐改一个短的别名，到时候名字变了，把别名的对象一起改了就行，代码不用动
+    ; 接下来的话，可能会记录一些比较重要的更新记录
+    ; 但是我绝对不会写特别详细的，没必要，我也懒得
+    ; 如果需要使用的话，务必充分测试
+    ; 目前我只能保证合法参数没有问题，当然也不能保证，那天的strlen就把我坑惨啦
+    ; 新增了结尾版本的stredy，我叫它strddy
+    ; 调整了排版，让文件更好读
+
+; 2026年10月10日
 
 ;到底了，就这么多~
