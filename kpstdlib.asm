@@ -479,6 +479,8 @@ global  kp_avx2_strcpy_fastcall_win64
 global  kp_strddy_fastcall_win64
 
 global  kp_memcmp_fastcall_win64
+global  kp_strstr_fastcall_win64
+global  kp_memset_fastcall_win64
 
 ;======WIN32API======
 
@@ -3331,7 +3333,7 @@ kp_strchr_fastcall_win64:
 
 ;目前最好用的strchr
 ;爆改sse2版本爆改成sse3版本strchr
-;（留空，源，源长，单字节字符）单位字节
+;（留空，目标，目标长，单字节字符）单位字节
 ;长度给负数自动算，但是要保证0结尾
 kp_ssse3_strchr_fastcall_win64:
 ;不管了改成返回索引吧，C的用索引方便
@@ -4134,23 +4136,240 @@ kp_memcmp_fastcall_win64:
     xor eax, eax
     ret
 
+;查找字符串
+;源长是负数就自动算，目标长必须填
+;（源，源长，目标，目标长）
+;主程序里面如果前面都检查了的话，返回值是0就大概率没找到
+kp_strstr_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+    
+    test r8, r8
+    jz   .np
+    test r9, r9
+    jz   .np
+
+    test rdx, rdx
+    jz   .np
+    jns  .havelen
+
+    push rcx
+    push r8
+    push r9
+
+    call kp_sse2_strlen_fastcall_win64
+
+    pop r9
+    pop r8
+    pop rcx
+
+    mov rdx, rax
+
+    test rdx, rdx
+    jz   .np
+
+.havelen:
+
+    cmp rdx, r9
+    ja  .np
+
+    push r15
+    push r14
+    push r13
+    push r12
+
+    push rsi
+    push rdi
+
+    ; mov r15, r9
+
+    mov r14, r8
+    mov r13, rdx
+    mov r12, rcx
+
+    not rdx
+    lea r15, [r9+rdx+2]
+
+    mov rsi, rcx
+
+; r15   目标长
+; r14   目标
+; r13   源长
+; r12   源
+
+    push r14
+
+.main:
+
+    mov rdx, r14
+    mov r8,  r15
+    mov r9b, [r12]
+
+    call kp_ssse3_strchr_fastcall_win64
+
+    test rax, rax
+    ; jz   .notfound
+    jnz  .nozero
+    
+    mov r9b, [r12]
+    cmp r9b, [r14+rax]
+    jne .notfound
+
+.nozero:
+
+    ;第一个字母找到之后到这里
+    lea rdi, [r14+rax]
+    mov r14, rdi
+
+    mov rcx, r13
+    repe cmpsb
+
+    ; je .found
+    je .normalexit
+
+    mov rsi, r12
+    ; lea r14, [r14+rax+1]
+    inc r14
+    sub r15, rax
+    dec r15
+
+    jbe .notfound
+    jmp .main
+
+.normalexit:
+
+    mov rax, r14
+    pop r14
+    sub rax, r14
+    ;rax就是索引
+
+    pop rdi
+    pop rsi
+
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+    ret
+
+.notfound:
+
+    pop r14
+
+    pop rdi
+    pop rsi
+
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+    ; ret
+
+.np:
+
+    xor eax, eax
+    ret
+
+; .found:
+;     ; lea r14, [r14+rax]
+;     jmp .normalexit
 
 
 
 
+;memset(stosX)标量版本
+;（字节数，内容，目标，标志位）
+;目前r9前两位启用，4种状态分别是stosb\w\d\q
+;写完才发现是五代同堂
+;0长度也算失败
+kp_memset_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+    test r8,  r8
+    jz   .np
+
+    cld
+
+    and r9, 3
+    jnz .wrd
+
+    push rdi
+    mov  rdi, r8
+
+    mov al, dl
+
+    rep stosb
+
+    mov rax, rdi
+
+    pop rdi
+
+    ret
+
+.wrd:
+
+    test r9, 2
+    jnz  .duo
+
+    shr rcx, 1
+    mov ax,  dx
+    
+    push rdi
+    mov  rdi, r8
+
+    rep stosw
+
+    mov rax, rdi
+
+    pop rdi
+
+    ret
+
+.duo:
+
+    test r9, 1
+    jnz  .qud
+
+    shr rcx, 2
+    mov eax, edx
+    
+    push rdi
+    mov  rdi, r8
+
+    rep stosd
+
+    mov rax, rdi
+
+    pop rdi
+
+    ret
 
 
+.qud:
+
+    shr rcx, 3
+    mov rax, rdx
+    
+    push rdi
+    mov  rdi, r8
+
+    rep stosq
+
+    mov rax, rdi
+
+    pop rdi
+
+    ret
 
 
+.np:
 
-
-
-
-
-
-
-
-
+    xor eax, eax
+    ret
 
 
 
