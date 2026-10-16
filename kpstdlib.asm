@@ -103,7 +103,8 @@
 ;宏展开放这里了别再问我啦！
 ;就是开头的宏文件里面的，我自己写的
 ;看到这两行不用纠结，看不懂没关系
-;默认栈对齐16自己就行
+;默认栈对齐16字节就行
+;某名言：如果你没事你就写strlen
 
 ;kmarco.inc
 
@@ -142,6 +143,8 @@
     ;     mov rsp, rbp
     ;     pop rbp
     ; %endmacro
+
+    ; %define L __?utf16?__
 
 bits    64
 default rel
@@ -401,7 +404,7 @@ default rel
 
 ; 我两万年前草稿纸上写的
 
-;立项日期无从考究，但是可以确定在2026年8月26日及以前
+;这个库的立项日期无从考究，但是可以确定在2026年8月26日及以前
 
 ;虽然也是个教学用的性能没必要太好，但是还是想要追求完美一些
 ;为了方便调试和写，寄存器非必要全用r64
@@ -482,6 +485,8 @@ global  kp_memcmp_fastcall_win64
 global  kp_strstr_fastcall_win64
 global  kp_memset_fastcall_win64
 
+global  kp_errormsgboxw_fastcall_win64
+
 ;======WIN32API======
 
 extern  ReadFile
@@ -518,6 +523,8 @@ section .data
     wasteimm dq 0
 
     orirsi dq 0
+
+    errortitle db L('error'),0,0
 
     days        dq 0 ;总天数
     seconds     dq 0 ;总秒数
@@ -903,6 +910,9 @@ kp_prtnum_frmstk_wthrcx_rep_fastcall_win64:
 ;现在没有待定了，这个函数被废弃了，现在是x64而不是8086
 ;再次声明这个函数被废弃了，当广告看就行（2026年10月3日）
 
+;标号
+.GunMu:
+
 ;内部函数，C不能直接用，8086代码移植
 ;单独打印rax，给日志功能用，应该不会破坏任何寄存器
 ;破坏RAX返回
@@ -970,6 +980,7 @@ kp_prtnum_frmrax:
 kp_prtnum_frmrcx_fastcall_win64:
     mov rax, rcx
     jmp kp_prtnum_frmrax
+    ;这里的jmp直接跳转到原来的，这样就不用同时维护两套代码
 
 ;文本复制，带检查（实际没有用的检查）
 ;rcx放源指针，rdx放源长度，r8放目标指针，r9放目标长度，单位均为字节
@@ -1044,7 +1055,7 @@ kp_strcpy_fastcall_win64:
     ; pop rbp
     ret
 
-db '少羽牛逼' ;这个是签名，也就是特征，这4个字会被原封不动放进exe里面，以后要检查这个函数直接就是x64dbg里面搜特征就能定位到这里
+db '少羽牛逼' ;这个是签名，也就是特征，这4个字会被原封不动放进exe里面，以后要检查这个函数直接就是x64dbg里面搜特征就能定位到这里，但是说实话PDB虽然命令多，但是确实好用
 
 ;输入rcx，可以用系统提供时间GetSystemTimeAsFileTime
 ;传入参数：rcx放时间由系统提供，1个地址用来返回纯文本的紧凑时间
@@ -1110,7 +1121,9 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov [rbp+32], r8
     mov [rbp+40], r9
     ;已经保存了所有参数，前面4个在影子空间
-    mov rax,      rcx
+    
+    mov rax, rcx
+    ;rax赋值filetime，等会用来除法
 
     xor rbx, rbx ;这行干嘛用的我也忘了，其实没用（对就是没用，留着当彩蛋）（2026年10月3日）
     
@@ -1135,6 +1148,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov [days],     rax
     mov [seconds],  rdx
     mov rcx,        days_per_400_years ;先算有多少完整400年
+    ;这是个常量，是每400年的天数
     xor rdx,        rdx
     div rcx
     mov [nboffhys], rax
@@ -1161,6 +1175,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
 ;先比较闰年必要
     mov rax, [tempdays]
+    ;取回来暂存的天数
     cmp rax, 1460
     je  .skipdivy
     ;这个标号在后面
@@ -1168,7 +1183,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     xor rdx, rdx
     div rcx
 
-;1460天直接传送门走这里    
+;1460天直接传送门走这里，这样反而快，而且稳定   
 .skipdivn:    
     
     ;保存剩余年数和天数
@@ -1290,6 +1305,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     xor rsi, rsi
     mov rdi, 6
     lea r15, [realyears]
+    ;顺序就是年月日时分秒，方便循环用
 .reprtlop:
     lea  rcx, [bu]
     mov  rdx, -1
@@ -1299,6 +1315,8 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     sub  r9,  rax
     ;计算剩余长度并且放入r9
     mov  rax, [r15+rsi]
+    ;这里是习惯用rsi当变址寄存器，用别的也行
+    ;或者写成r15+6，直接剩下来一个寄存器
     call kp_prtnum_frmrax_intime
     call kp_strcpy_enddls_fastcall_win64
     ;这个函数返回rax是末尾地址
@@ -1320,6 +1338,7 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
     mov  al,   ('{')
     mov  ah,   0
     mov  [bu], ax
+    ; 一次性写入大括号和结尾0
     call kp_strcpy_fastcall_win64
     lea  rcx,  [bu]
     mov  rdx,  -1
@@ -1391,9 +1410,13 @@ kp_filetime_to_realtime_frmrax_ret_fastcall_win64:
 
 db 'This_is_a_sentence.' ;依旧标记
 
-;我去终于写完了这玩意，日期函数用了我三个星期    
-;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
-;这玩意折磨我三个星期（结束于2026年9月13日）
+    ;我去终于写完了这玩意，日期函数用了我三个星期    
+    ;算出来日期，从参数3到参数8返回年份，月份，日子，小时，分钟，秒数
+    ;这玩意折磨我三个星期（结束于2026年9月13日）
+
+;这个函数已经当成废弃，而且现在有更好的，如果需要的话，重新公开就好
+
+.GunMu:
 
 ;文本复制，带检查（实际没有用的检查）
 ;和strcpy唯一不同的就是
@@ -4365,16 +4388,166 @@ kp_memset_fastcall_win64:
 
     ret
 
-
 .np:
 
     xor eax, eax
     ret
 
 
+; 封装错误弹窗
+; （句柄，utf16le文本指针）
+kp_errormsgboxw_fastcall_win64:
+
+    test rdx, rdx
+    jz   .np
+
+    lea r8, [errortitle]
+    mov r9, (MB_ICONERROR+MB_OK)
+
+    jmp MessageBoxW
+
+.np:
+    xor eax, eax
+    ret
+
+
+; 标量宽字符strlen
+; rcx=src
+kp_wstrlen_fastcall_win64:
+
+    xor eax, eax
+
+    test rcx, rcx
+    jz   .np
+
+    push rdi
+
+    mov rdi, rcx
+    mov rcx, -1
+
+    repne scasw
+
+    not rcx
+    dec rcx
+
+    mov rax, rcx
+    pop rdi
+
+    ; ret
+
+.np:
+
+    ret
 
 
 
+; sse2的strlen增强版
+; rcx = src
+kp_enhanced_sse2_strlen_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+
+    pxor xmm1, xmm1
+    mov  rax,  rcx
+
+    mov rdx, rcx
+    mov r9,  16
+
+    and rdx, -16
+    cmp rdx, rcx
+    ; 我真的不理解一百万个初学者都会犯的错：以为test之后je，实际上并不是相等的意思
+
+    je .beforesse
+
+    sub rcx, rdx
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    shr r8d, cl
+
+    test r8d, r8d
+    jnz  .found
+
+    add rdx, r9
+
+.beforesse:
+
+    ; rax = src
+
+    test rdx, 63
+    je   .sseloop
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, r9
+
+    jmp .beforesse
+
+.sseloop:
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, r9
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, r9
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, r9
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .ssefound
+
+    add rdx, r9
+
+    jmp .sseloop
+
+.ssefound:
+
+    sub rdx,rax
+    bsf eax,r8d
+    add rax,rdx
+
+    ret
+
+.found:
+
+    bsf eax, r8d
+    ret
+
+.np:
+
+    xor eax, eax
+    ret
 
 
 
@@ -4391,9 +4564,19 @@ section kpstdlib
 A_UNAVAILABLE_SIGN:
 
 ksignlabel:
-;KUSSA(KUSSA_LTSC)
+; KUSSA(KUSSA_LTSC)
     jmp ksignlabel
     db 'KUSSA_LTSC'
+
+
+
+; 我要说的：
+
+    ; KUSSA\KUSSA_LTSC\KUSSA-LTSC均为作者名字
+    ; 来自作者的中文网名：枯飒、枯渢霂颯
+    ; 枯渢霂飒原来是形容秋天的意思，没有任何特殊含义
+
+; 喜怒哀樂
 
 ;来自另一个项目的内容：
 
@@ -4442,7 +4625,7 @@ ksignlabel:
 
     ; 2026年9月12日（最后修改于2026年10月10日）
 
-;以上，到此为止，以下，杂七杂八。
+;以上，到此为止，以下，杂七杂八，注意，我习惯先写完内容，再注上时间，你也可以发现“今天是国庆节”的日期标注在它下面。
 
     ; 我去了我要累死了啊
 
@@ -4558,7 +4741,21 @@ ksignlabel:
     ; 什么叫不给学校统一订购校服啊，现在**你们满意了吧
     ; 自己买也是一样贵，还要跑东跑西的，还不一定买得到，天天缺货
     ; 真就以为学校订购就贪你的啦，现在自己造出来的屎让大家一起吃你们**
+    ; Playing:《蒸気火鸡の塑料爱》
+    ; 不写了不写了，去看我的波奇酱
+    ; 算了算了再写一点点注释吧
 
 ; 2026年10月11日
+
+    ; 加了个作者名字的声明
+    ; 今天学校饭堂又是勾石吃，我真的服了，22块钱买回来一个不知道冰柜里面冻了多久的鸡扒饭，那米饭干得不行，煲仔饭都没它干，一口下去从清朝嚼到现在
+    ; 我在考虑要不要移除有关学校的内容
+    ; Playing:《Meet_Me_Half_Way》
+    ; 修复了一些未知问题
+    ; 新增了几个函数
+    ; 又双叒叕写了两个strlen
+    ; 不过我真正想要的东西还没做
+
+; 2026年10月16日
 
 ;到底了，就这么多~
