@@ -486,6 +486,9 @@ global  kp_strstr_fastcall_win64
 global  kp_memset_fastcall_win64
 
 global  kp_errormsgboxw_fastcall_win64
+global  kp_wstrlen_fastcall_win64
+global  kp_enhanced_sse2_strlen_fastcall_win64
+global  kp_win32api_get_current_handle_fastcall_win64
 
 ;======WIN32API======
 
@@ -4421,6 +4424,7 @@ kp_wstrlen_fastcall_win64:
     jz   .np
 
     push rdi
+    cld
 
     mov rdi, rcx
     mov rcx, -1
@@ -4533,9 +4537,9 @@ kp_enhanced_sse2_strlen_fastcall_win64:
 
 .ssefound:
 
-    sub rdx,rax
-    bsf eax,r8d
-    add rax,rdx
+    sub rdx, rax
+    bsf eax, r8d
+    add rax, rdx
 
     ret
 
@@ -4548,6 +4552,12 @@ kp_enhanced_sse2_strlen_fastcall_win64:
 
     xor eax, eax
     ret
+
+
+
+kp_win32api_get_current_handle_fastcall_win64:
+    xor ecx, ecx
+    jmp GetModuleHandleW
 
 
 
@@ -4755,6 +4765,9 @@ ksignlabel:
     ; 新增了几个函数
     ; 又双叒叕写了两个strlen
     ; 不过我真正想要的东西还没做
+    ; Playing:《青春コンプレックス》-結束バンド_-BTR-S_FLAC
+    ; かき鳴らせ 交わるカルテット 革命を 成し遂げてみたいな
+    ; 打ち鳴らせ 嘆きのフォルテ どうしよう？ 超奔放凶暴な本性を
 
 ; 2026年10月16日
 
