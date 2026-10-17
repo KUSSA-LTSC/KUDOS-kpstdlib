@@ -490,6 +490,11 @@ global  kp_wstrlen_fastcall_win64
 global  kp_enhanced_sse2_strlen_fastcall_win64
 global  kp_win32api_get_current_handle_fastcall_win64
 
+global  kp_sse4_strlen_fastcall_win64
+global  kp_win32api_mini_register_class_ex_w_fastcall_win64
+global  kp_exit_fastcall_win64
+global  kp_create_window_ex_w_fastcall_win64
+
 ;======WIN32API======
 
 extern  ReadFile
@@ -512,6 +517,33 @@ extern  SetFilePointerEx
 extern  GetForegroundWindow
 extern  MultiByteToWideChar
 extern  WideCharToMultiByte
+
+extern  RegisterClassExW
+extern  DefWindowProcW
+extern  LoadCursorW
+extern  LoadIconW
+extern  SetWindowPos
+extern  DestroyWindow
+extern  ShowWindow
+extern  UpdateWindow
+extern  GetClientRect
+extern  GetWindowRect
+extern  BeginPaint
+extern  EndPaint
+extern  InvalidateRect
+extern  ValidateRect
+extern  GetMessageW
+extern  TranslateMessage
+extern  DispatchMessageW
+extern  PostQuitMessage
+extern  CreateWindowExW
+extern  GetStockObject
+extern  GetDC
+extern  ReleaseDC
+extern  SetFocus
+extern  SetCapture
+extern  ReleaseCapture
+extern  TrackMouseEvent
 
 section .data
     ;数据先丢这里
@@ -587,6 +619,35 @@ section .data
     db           0xA,0xB,0xC,0xD,0xE,0xF ; 0x61-0x66  'a'-'f'
     times 153 db 0                       ; 0x67-0xFF 非法区
 
+    align 8
+    wnd_class_data:
+        .cb_size:    dd 80   ; +0  结构体大小，固定 80
+        .style:      dd 0    ; +4  窗口类样式，CS_xxx
+        .wnd_proc:   dq 0    ; +8  窗口过程地址
+        .cls_extra:  dd NULL ; +16 类附加字节
+        .wnd_extra:  dd NULL ; +20 窗口附加字节
+        .instance:   dq 0    ; +24 模块句柄
+        .icon:       dq NULL ; +32 大图标
+        .cursor:     dq 0    ; +40 光标
+        .background: dq NULL ; +48 背景画刷
+        .menu_name:  dq NULL ; +56 菜单名，NULL 表示无菜单
+        .class_name: dq 0    ; +64 类名字符串地址
+        .icon_sm:    dq NULL ; +72 小图标
+    wnd_class_data_end:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ; 神秘常量，提取自windows.inc
 
@@ -607,6 +668,24 @@ INFINITE              equ 0xFFFFFFFF
 CS_VREDRAW            equ 0x0001
 ; 窗口水平方向变化时重绘
 CS_HREDRAW            equ 0x0002
+; 双击时窗口收到 WM_LBUTTONDBLCLK
+CS_DBLCLKS            equ 0x0008
+; 窗口自己保留一个 DC
+CS_OWNDC              equ 0x0020
+; 类共用一个 DC
+CS_CLASSDC            equ 0x0040
+; 从父窗口继承 DC
+CS_PARENTDC           equ 0x0080
+; 屏蔽 Alt+F4 关闭
+CS_NOCLOSE            equ 0x0200
+; 被遮住时保存像素，露出时直接贴回
+CS_SAVEBITS           equ 0x0800
+; 客户区字节对齐
+CS_BYTEALIGNCLIENT    equ 0x1000
+; 窗口字节对齐
+CS_BYTEALIGNWINDOW    equ 0x2000
+; 全局类（跨进程）
+CS_GLOBALCLASS        equ 0x4000
 
 ; ==================== 窗口样式 ====================
 ; 重叠窗口（默认无边框）
@@ -617,10 +696,22 @@ WS_POPUP              equ 0x80000000
 WS_CHILD              equ 0x40000000
 ; 窗口可见
 WS_VISIBLE            equ 0x10000000
+; 最小化态
+WS_MINIMIZE           equ 0x20000000
+; 最大化态
+WS_MAXIMIZE           equ 0x01000000
+; 禁用窗口，不响应输入
+WS_DISABLED           equ 0x08000000
+; 先绘父再绘子，防止子窗口闪烁
+WS_CLIPCHILDREN       equ 0x02000000
+; 先绘兄弟，防止兄弟重叠闪烁
+WS_CLIPSIBLINGS       equ 0x04000000
 ; 有标题栏
 WS_CAPTION            equ 0x00C00000
 ; 有边框
 WS_BORDER             equ 0x00800000
+; 对话框边框
+WS_DLGFRAME           equ 0x00400000
 ; 有系统菜单（左上角图标）
 WS_SYSMENU            equ 0x00080000
 ; 可调整大小的边框
@@ -629,8 +720,27 @@ WS_THICKFRAME         equ 0x00040000
 WS_MINIMIZEBOX        equ 0x00020000
 ; 有最大化按钮
 WS_MAXIMIZEBOX        equ 0x00010000
+; 分组（Tab 顺序）
+WS_GROUP              equ 0x00020000
+; Tab 停止点
+WS_TABSTOP            equ 0x00010000
+; 水平滚动条
+WS_HSCROLL            equ 0x00100000
+; 垂直滚动条
+WS_VSCROLL            equ 0x00200000
 ; 标准重叠窗口：标题栏+系统菜单+可缩放+最小化+最大化
 WS_OVERLAPPEDWINDOW   equ WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
+; 弹出式窗口：边框+系统菜单
+WS_POPUPWINDOW        equ WS_POPUP | WS_BORDER | WS_SYSMENU
+; 子窗口（别名）
+WS_CHILDWINDOW        equ WS_CHILD
+; 平铺窗口（别名）
+WS_TILED              equ WS_OVERLAPPED
+WS_TILEDWINDOW        equ WS_OVERLAPPEDWINDOW
+; 图标态（别名）
+WS_ICONIC             equ WS_MINIMIZE
+; 尺寸框（别名）
+WS_SIZEBOX            equ WS_THICKFRAME
 
 ; ==================== ShowWindow ====================
 ; 隐藏窗口
@@ -641,32 +751,142 @@ SW_SHOWNORMAL         equ 1
 SW_SHOWMINIMIZED      equ 2
 ; 最大化显示
 SW_SHOWMAXIMIZED      equ 3
+; 按最近状态显示，不激活
+SW_SHOWNOACTIVATE     equ 4
 ; 按最近状态显示
 SW_SHOW               equ 5
+; 最小化
+SW_MINIMIZE           equ 6
+; 最小化但不激活
+SW_SHOWMINNOACTIVE    equ 7
+; 显示但不激活
+SW_SHOWNA             equ 8
 ; 从最小化/最大化恢复
 SW_RESTORE            equ 9
+; 按 STARTUPINFO 显示
+SW_SHOWDEFAULT        equ 10
+; 强制最小化
+SW_FORCEMINIMIZE      equ 11
+
+; ==================== SetWindowPos ====================
+; 保持大小
+SWP_NOSIZE            equ 0x0001
+; 保持位置
+SWP_NOMOVE            equ 0x0002
+; 保持 z 序
+SWP_NOZORDER          equ 0x0004
+; 不重绘
+SWP_NOREDRAW          equ 0x0008
+; 不激活
+SWP_NOACTIVATE        equ 0x0010
+; 强制重算边框（改样式后用）
+SWP_FRAMECHANGED      equ 0x0020
+; 同时显示
+SWP_SHOWWINDOW        equ 0x0040
+; 同时隐藏
+SWP_HIDEWINDOW        equ 0x0080
+; 不保留旧像素
+SWP_NOCOPYBITS        equ 0x0100
+; 不动 owner 的 z 序
+SWP_NOOWNERZORDER     equ 0x0200
+; 不发 WM_WINDOWPOSCHANGING
+SWP_NOSENDCHANGING    equ 0x0400
+; 重画边框（别名）
+SWP_DRAWFRAME         equ SWP_FRAMECHANGED
+; 不重排位置（别名）
+SWP_NOREPOSITION      equ SWP_NOOWNERZORDER
 
 ; ==================== 窗口消息 ====================
+; 空消息（探测用）
+WM_NULL               equ 0x0000
 ; 窗口创建
 WM_CREATE             equ 0x0001
 ; 窗口销毁
 WM_DESTROY            equ 0x0002
+; 窗口移动
+WM_MOVE               equ 0x0003
 ; 窗口大小改变
 WM_SIZE               equ 0x0005
+; 窗口激活/失活
+WM_ACTIVATE           equ 0x0006
+; 获得焦点
+WM_SETFOCUS           equ 0x0007
+; 失去焦点
+WM_KILLFOCUS          equ 0x0008
+; 启用/禁用
+WM_ENABLE             equ 0x000A
+; 暂停/恢复重绘
+WM_SETREDRAW          equ 0x000B
+; 设置标题
+WM_SETTEXT            equ 0x000C
+; 获取标题
+WM_GETTEXT            equ 0x000D
+; 获取标题长度
+WM_GETTEXTLENGTH      equ 0x000E
 ; 需要重绘
 WM_PAINT              equ 0x000F
 ; 关闭请求
 WM_CLOSE              equ 0x0010
+; 询问能否关机
+WM_QUERYENDSESSION    equ 0x0011
 ; 退出消息循环
 WM_QUIT               equ 0x0012
+; 擦背景
+WM_ERASEBKGND         equ 0x0014
+; 关机通知
+WM_ENDSESSION         equ 0x0016
+; 显示/隐藏
+WM_SHOWWINDOW         equ 0x0018
+; 取消当前模式（Esc）
+WM_CANCELMODE         equ 0x001F
+; 设置光标
+WM_SETCURSOR          equ 0x0020
+; 点击时是否激活
+WM_MOUSEACTIVATE      equ 0x0021
+; 最小/最大尺寸限制
+WM_GETMINMAXINFO      equ 0x0024
+; 位置改变前
+WM_WINDOWPOSCHANGING  equ 0x0046
+; 位置改变后
+WM_WINDOWPOSCHANGED   equ 0x0047
+; 右键菜单
+WM_CONTEXTMENU        equ 0x007B
+; 获取图标
+WM_GETICON            equ 0x007F
+; 设置图标
+WM_SETICON            equ 0x0080
+; 创建窗口前（设置自定义数据）
+WM_NCCREATE           equ 0x0081
+; 销毁后（清理自定义数据）
+WM_NCDESTROY          equ 0x0082
+; 计算客户区大小（自绘标题栏时截获）
+WM_NCCALCSIZE         equ 0x0083
+; 命中测试（自绘边框时截获）
+WM_NCHITTEST          equ 0x0084
+; 绘制非客户区
+WM_NCPAINT            equ 0x0085
+; 激活/失活非客户区
+WM_NCACTIVATE         equ 0x0086
 ; 键盘按下
 WM_KEYDOWN            equ 0x0100
 ; 键盘抬起
 WM_KEYUP              equ 0x0101
 ; 字符输入
 WM_CHAR               equ 0x0102
+; 死键（重音符号）
+WM_DEADCHAR           equ 0x0103
+; 系统键按下（Alt 组合）
+WM_SYSKEYDOWN         equ 0x0104
+; 系统键抬起
+WM_SYSKEYUP           equ 0x0105
+; 系统字符
+WM_SYSCHAR            equ 0x0106
+; 系统死键
+WM_SYSDEADCHAR        equ 0x0107
 ; 菜单/控件命令
 WM_COMMAND            equ 0x0111
+; 系统菜单命令（最小化/最大化/关闭）
+WM_SYSCOMMAND         equ 0x0112
 ; 定时器触发
 WM_TIMER              equ 0x0113
 ; 鼠标移动
@@ -675,18 +895,50 @@ WM_MOUSEMOVE          equ 0x0200
 WM_LBUTTONDOWN        equ 0x0201
 ; 左键抬起
 WM_LBUTTONUP          equ 0x0202
+; 左键双击
+WM_LBUTTONDBLCLK      equ 0x0203
 ; 右键按下
 WM_RBUTTONDOWN        equ 0x0204
 ; 右键抬起
 WM_RBUTTONUP          equ 0x0205
+; 右键双击
+WM_RBUTTONDBLCLK      equ 0x0206
+; 中键按下
+WM_MBUTTONDOWN        equ 0x0207
+; 中键抬起
+WM_MBUTTONUP          equ 0x0208
+; 中键双击
+WM_MBUTTONDBLCLK      equ 0x0209
+; 滚轮
+WM_MOUSEWHEEL         equ 0x020A
+; X 键按下
+WM_XBUTTONDOWN        equ 0x020B
+; X 键抬起
+WM_XBUTTONUP          equ 0x020C
+; X 键双击
+WM_XBUTTONDBLCLK      equ 0x020D
+; 水平滚轮
+WM_MOUSEHWHEEL        equ 0x020E
+; 鼠标离开窗口（需要 TrackMouseEvent 才会收到）
+WM_MOUSELEAVE         equ 0x02A3
+; 自定义消息起点
+WM_USER               equ 0x0400
+; 应用自定义消息起点
+WM_APP                equ 0x8000
 
 ; ==================== 消息框 ====================
 ; 只有一个"确定"按钮
 MB_OK                 equ 0x00000000
 ; "确定"+"取消"
 MB_OKCANCEL           equ 0x00000001
+; "终止"+"重试"+"忽略"
+MB_ABORTRETRYIGNORE   equ 0x00000002
+; "是"+"否"+"取消"
+MB_YESNOCANCEL        equ 0x00000003
 ; "是"+"否"
 MB_YESNO              equ 0x00000004
+; "重试"+"取消"
+MB_RETRYCANCEL        equ 0x00000005
 ; 错误图标
 MB_ICONERROR          equ 0x00000010
 ; 问号图标
@@ -695,22 +947,80 @@ MB_ICONQUESTION       equ 0x00000020
 MB_ICONWARNING        equ 0x00000030
 ; 信息图标
 MB_ICONINFORMATION    equ 0x00000040
+; 默认按钮 1
+MB_DEFBUTTON1         equ 0x00000000
+; 默认按钮 2
+MB_DEFBUTTON2         equ 0x00000100
+; 默认按钮 3
+MB_DEFBUTTON3         equ 0x00000200
 
 ; ==================== 消息框返回值 ====================
 ; 用户点了"确定"
 IDOK                  equ 1
 ; 用户点了"取消"
 IDCANCEL              equ 2
+; 用户点了"终止"
+IDABORT               equ 3
+; 用户点了"重试"
+IDRETRY               equ 4
+; 用户点了"忽略"
+IDIGNORE              equ 5
 ; 用户点了"是"
 IDYES                 equ 6
 ; 用户点了"否"
 IDNO                  equ 7
 
-; ==================== 系统资源 ====================
+; ==================== 系统资源 - 光标 ====================
 ; 标准箭头光标
 IDC_ARROW             equ 32512
+; I 形（文本）
+IDC_IBEAM             equ 32513
+; 沙漏
+IDC_WAIT              equ 32514
+; 十字
+IDC_CROSS             equ 32515
+; 向上箭头
+IDC_UPARROW           equ 32516
+; 西北-东南双向（斜拉）
+IDC_SIZENWSE          equ 32642
+; 东北-西南双向（斜拉）
+IDC_SIZENESW          equ 32643
+; 水平双向（左右拉）
+IDC_SIZEWE            equ 32644
+; 垂直双向（上下拉）
+IDC_SIZENS            equ 32645
+; 四向箭头（移动）
+IDC_SIZEALL           equ 32646
+; 禁止
+IDC_NO                equ 32648
+; 手形（链接）
+IDC_HAND              equ 32649
+; 后台+箭头
+IDC_APPSTARTING       equ 32650
+; 问号
+IDC_HELP              equ 32651
+
+; ==================== 系统资源 - 图标 ====================
 ; 标准应用图标
 IDI_APPLICATION       equ 32512
+; 错误图标
+IDI_HAND              equ 32513
+; 问号图标
+IDI_QUESTION          equ 32514
+; 警告图标
+IDI_EXCLAMATION       equ 32515
+; 信息图标
+IDI_ASTERISK          equ 32516
+; Windows 徽标
+IDI_WINLOGO           equ 32517
+; UAC 盾牌
+IDI_SHIELD            equ 32518
+; 错误（别名）
+IDI_ERROR             equ IDI_HAND
+; 警告（别名）
+IDI_WARNING           equ IDI_EXCLAMATION
+; 信息（别名）
+IDI_INFORMATION       equ IDI_ASTERISK
 
 ; ==================== 颜色 ====================
 ; 窗口背景色（白）
@@ -729,8 +1039,12 @@ MEM_DECOMMIT          equ 0x4000
 MEM_RELEASE           equ 0x8000
 ; 不可访问
 PAGE_NOACCESS         equ 0x01
+; 只读
+PAGE_READONLY         equ 0x02
 ; 可读可写
 PAGE_READWRITE        equ 0x04
+; 写时复制
+PAGE_WRITECOPY        equ 0x08
 
 ; ==================== 文件 ====================
 ; 读取权限
@@ -769,6 +1083,28 @@ STD_INPUT_HANDLE      equ -10
 STD_OUTPUT_HANDLE     equ -11
 ; 标准错误句柄
 STD_ERROR_HANDLE      equ -12
+
+; ==================== 画刷（GetStockObject 用）====================
+; 白色画刷
+WHITE_BRUSH           equ 0
+; 浅灰色画刷
+LTGRAY_BRUSH          equ 1
+; 灰色画刷
+GRAY_BRUSH            equ 2
+; 深灰色画刷
+DKGRAY_BRUSH          equ 3
+; 黑色画刷
+BLACK_BRUSH           equ 4
+; 空画刷（不填充）
+NULL_BRUSH            equ 5
+; 黑色画笔
+BLACK_PEN             equ 7
+; 空画笔（不画线）
+NULL_PEN              equ 8
+; 系统字体
+SYSTEM_FONT           equ 13
+; 默认 GUI 字体
+DEFAULT_GUI_FONT      equ 17
 
 
 ;代码段
@@ -4560,6 +4896,288 @@ kp_win32api_get_current_handle_fastcall_win64:
     jmp GetModuleHandleW
 
 
+; sse2的strlen增强版爆改sse4
+; rcx = src
+kp_sse4_strlen_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+
+    pxor xmm1, xmm1
+    mov  rax,  rcx
+
+    mov rdx, rcx
+    mov r9,  16
+
+    and rdx, -16
+    cmp rdx, rcx
+    ; 我真的不理解一百万个初学者都会犯的错：以为test之后je，实际上并不是相等的意思
+
+    je .beforesse
+
+    sub rcx, rdx
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    shr r8d, cl
+
+    test r8d, r8d
+    jnz  .found
+
+    add rdx, r9
+
+.beforesse:
+
+    ; rax = src
+
+    test rdx, 63
+    je   .sseloop
+
+    movdqa  xmm0, [rdx]
+    pcmpeqb xmm0, xmm1
+    ; pmovmskb r8d,  xmm0
+
+    ptest xmm0, xmm0
+
+    ; test r8d, r8d
+    jnz .ssefound
+
+    add rdx, r9
+
+    jmp .beforesse
+
+.sseloop:
+
+    movdqa  xmm0, [rdx]
+    pcmpeqb xmm0, xmm1
+    ; pmovmskb r8d,  xmm0
+
+    ptest xmm0, xmm0
+
+    ; test r8d, r8d
+    jnz .ssefound
+
+    add rdx, r9
+
+    movdqa  xmm0, [rdx]
+    pcmpeqb xmm0, xmm1
+    ; pmovmskb r8d,  xmm0
+
+    ptest xmm0, xmm0
+
+    ; test r8d, r8d
+    jnz .ssefound
+
+    add rdx, r9
+
+    movdqa  xmm0, [rdx]
+    pcmpeqb xmm0, xmm1
+    ; pmovmskb r8d,  xmm0
+
+    ptest xmm0, xmm0
+
+    ; test r8d, r8d
+    jnz .ssefound
+
+    add rdx, r9
+
+    movdqa  xmm0, [rdx]
+    pcmpeqb xmm0, xmm1
+    ; pmovmskb r8d,  xmm0
+
+    ptest xmm0, xmm0
+
+    ; test r8d, r8d
+    jnz .ssefound
+
+    add rdx, r9
+
+    jmp .sseloop
+
+.ssefound:
+
+    pmovmskb r8d, xmm0
+
+    sub rdx, rax
+    bsf eax, r8d
+    add rax, rdx
+
+    ret
+
+.found:
+
+    bsf eax, r8d
+    ret
+
+.np:
+
+    xor eax, eax
+    ret
+
+
+
+
+
+
+; （窗口过程，类名）
+; 自动获取当前句柄
+kp_win32api_mini_register_class_ex_w_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+    test rdx, rdx
+    jz   .np
+
+    push rbp
+    mov  rbp, rsp
+
+    sub rsp, 80
+
+    cld
+
+    push rcx
+    push rdx
+
+    push rsi
+    push rdi
+
+    lea rsi, [wnd_class_data]
+    lea rdi, [rbp-80]
+
+    mov rcx, 80
+
+    rep movsb
+
+    pop rdi
+    pop rsi
+
+    pop rdx
+    pop rcx
+
+    ; 窗口过程
+    mov [rbp-72], rcx
+    ; 窗口类名
+    mov [rbp-16], rdx
+
+    adod
+
+    sub rsp, 32
+
+    call kp_win32api_get_current_handle_fastcall_win64
+
+    pdod
+
+    mov [rbp-56], rax
+
+    adod
+
+    sub rsp, 32
+
+    xor ecx, ecx
+    mov rdx, IDC_ARROW
+
+    call LoadCursorW
+
+    pdod
+
+    ; 这个肯定成功
+    mov [rbp-40], rax
+
+    lea rcx, [rbp-80]
+
+    adod
+
+    sub rsp, 32
+
+    call RegisterClassExW
+
+    pdod
+
+    pdod
+
+    ret
+
+.np:
+
+    xor eax, eax
+    ret
+
+
+
+kp_exit_fastcall_win64:
+    jmp ExitProcess
+
+
+; （类名，标题，宽，高，样式，创建参数）
+kp_create_window_ex_w_fastcall_win64:
+
+    mov r11, [rsp+48]
+    mov r10, [rsp+40]
+
+    push r11
+    push r10
+    push r9
+    push r8
+    push rdx
+    push rcx
+
+    adod
+
+    sub rsp, 32
+
+    call kp_win32api_get_current_handle_fastcall_win64
+
+    pdod
+
+    pop rcx
+    pop rdx
+    pop r8
+    pop r9
+    pop r10
+    pop r11
+
+    adod
+
+    push r11
+    push rax
+
+    ; 菜单
+    push NULL
+    ; 父窗口
+    push NULL
+    ; 高
+    push r9
+    ; 宽
+    push r8
+    ; y
+    ; push dword CW_USEDEFAULT
+    ; x
+    ; push dword CW_USEDEFAULT
+    mov  eax, CW_USEDEFAULT
+    push rax
+    push rax
+
+    sub rsp, 32
+
+    mov r9,  r10
+    mov r8,  rdx
+    mov rdx, rcx
+    xor ecx, ecx
+
+    call CreateWindowExW
+
+    pdod
+
+    ret
+
+
+
+
+
+
+
 
 
 
@@ -4770,5 +5388,70 @@ ksignlabel:
     ; 打ち鳴らせ 嘆きのフォルテ どうしよう？ 超奔放凶暴な本性を
 
 ; 2026年10月16日
+
+    ; 终于开始封装窗口函数
+    ; 加了个注册窗口类迷你版
+    ; 加了点别的函数
+    ; 现在好像有10个strlen
+    ; 修复了一些未知问题
+    ; 代码突破5300行啦
+    ; 写了个最小的注册窗口类模板
+    ; 修复了一些已知问题，并且在无人知晓的地方新增了一些未知的问题
+    ; Playing：《月並みに輝け》-結束バンド_-BTR-S_FLAC
+
+        ; 天才だって信じてた　バカみたいだ
+        ; 小さな自信　溢れ落ちて割れた
+        ; 偶然がなかったなら　わたしはまだ
+        ; 孤独感と手を繋ぎ踊っていたかな
+        
+        ; いいな　いいなと　欲しがってたのに
+        ; 夢は遠くて　現実ばっかで
+        ; まだだ　まだだ　まだ足りないんだ
+        ; 誰の胸にも届かない
+        
+        ; 一生存在証明　永遠（トワ）を超えていけ
+        ; ちくしょう！どうやったって時は止まらない
+        ; 間に合うかな　見知らぬ世界の果て
+        ; いつか　どうか
+        ; 秒速340mを超えていけ
+        ; 誰も聞いたことない旋律は鳴り止まない
+        ; 変われなくても　代わりはいないから
+        ; 鏡を閉じて
+        ; 革命寸前の未来を睨んだ
+        
+        ; 天才だって信じてた　気付かされた
+        ; 違う音、呼吸重ね合わせ負けた
+        ; 必然だって信じたい　わたしはもう
+        ; 戻れないよ　無知で無敵だったヒーロー
+        
+        ; どうする？どうしよう？問いかけてみる
+        ; わたしの中の　わたしが叫ぶ
+        ; 「君は　君だ　誰かと同じ
+        ; 未来なんて欲しくないでしょ」
+        
+        ; 一生全身全霊　限界を超えていけ
+        ; 何回間違えたって　指を止めるなよ
+        ; 叶わなくても　叶えたいと願って
+        ; 奏で続ける
+        ; 敗北宣言の未来を進んだ
+        
+        ; 「一生才能凡庸　天才じゃないからさ
+        ; 何にもない何にもできない」なんて言い訳
+        ; したくはないから　何度も挑んでやる
+        ; ついてこいよ
+        ; 秒速340mを超えていけ
+        ; 誰も聞いたことない旋律は鳴り止まない
+        ; 変われなくても　代わりはいないから
+        ; 鏡を閉じて
+        ; 革命寸前の未来だなんて
+        ; 紛れもなく確かな希望だ
+        
+        ; 天才だって信じてた　それでもまだ
+
+    ; 你还别说这波奇酱（其实是樋口愛）写的词是真牛逼
+    ; 窗口实在是太复杂啦，注册窗口类和创建都快搞死我咯
+    ; Playing：《冬の花》-AI东雪莲
+
+; 2026年10月17日
 
 ;到底了，就这么多~
