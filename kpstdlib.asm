@@ -489,6 +489,9 @@ global  kp_sse4_strlen_fastcall_win64
 global  kp_win32api_mini_register_class_ex_w_fastcall_win64
 global  kp_exit_fastcall_win64
 global  kp_create_window_ex_w_fastcall_win64
+global  kp_enhanced_avx2_strlen_fastcall_win64
+
+global kp_kana_avx2_strlen_fastcall_win64
 
 ;======WIN32API======
 
@@ -4143,7 +4146,7 @@ kp_sse2_strcpy_fastcall_win64:
 
     cld;还是加上吧
 
-    mov rcx, rdx
+    mov rcx, r9
     rep movsb
 
     mov r8,  rdi
@@ -4333,7 +4336,7 @@ kp_avx2_strcpy_fastcall_win64:
 
     cld;还是加上吧
 
-    mov rcx, rdx
+    mov rcx, r9
     rep movsb
 
     mov r8,  rdi
@@ -4383,7 +4386,7 @@ kp_avx2_strcpy_fastcall_win64:
 
     cld;还是加上吧
 
-    mov rcx, r9
+    mov rcx, rdx
     rep movsb
 
     mov r8,  rdi
@@ -5017,9 +5020,6 @@ kp_sse4_strlen_fastcall_win64:
 
 
 
-
-
-
 ; （窗口过程，类名）
 ; 自动获取当前句柄
 kp_win32api_mini_register_class_ex_w_fastcall_win64:
@@ -5170,6 +5170,408 @@ kp_create_window_ex_w_fastcall_win64:
     pdod
 
     ret
+
+
+
+
+
+
+
+
+
+
+
+; sse2的strlen增强版爆改avx2
+; rcx = src
+kp_enhanced_avx2_strlen_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+
+    vpxor xmm1,xmm1,xmm1
+    ; pxor xmm1, xmm1
+    mov rax, rcx
+
+    mov rdx, rcx
+    ; mov r9,  32
+
+    and rdx, -32
+    cmp rdx, rcx
+    ; 我真的不理解一百万个初学者都会犯的错：以为test之后je，实际上并不是相等的意思
+
+    je .beforeavx
+
+    sub rcx, rdx
+
+    ; vmovdqa   ymm0, [rdx]
+    ; vpcmpeqb ymm0,ymm0,ymm1
+    ; vpmovmskb r8d,  ymm0
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    shr r8d, cl
+
+    test r8d, r8d
+    jnz  .found
+
+    add rdx, 16
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .gofound
+
+    add rdx, 16
+
+.beforeavx:
+
+    ; rax = src
+
+    test rdx, 127
+    je   .avxloop
+
+    vmovdqa ymm0, [rdx]
+    vpcmpeqb ymm0,ymm0,ymm1
+    ; pmovmskb r8d,  xmm0
+
+    ; vptest ymm0,ymm0
+    vpmovmskb r8d, ymm0
+
+    test r8d, r8d
+    jnz  .avxfound
+
+    ; add rdx, r9
+    add rdx, 32
+
+    jmp .beforeavx
+
+.avxloop:
+
+    vmovdqa ymm0, [rdx]
+    vpcmpeqb ymm0,ymm0,ymm1
+    ; pmovmskb r8d,  xmm0
+
+    ; ptest xmm0, xmm0
+    vpmovmskb r8d, ymm0
+
+    test r8d, r8d
+    jnz  .avxfound
+
+    ; add rdx, r9
+
+    vmovdqa ymm0, [rdx+32]
+    vpcmpeqb ymm0,ymm0,ymm1
+    ; pmovmskb r8d,  xmm0
+
+    ; ptest xmm0, xmm0
+    vpmovmskb r8d, ymm0
+
+    test r8d, r8d
+    jnz  .avxfound32
+
+    ; add rdx, r9
+
+    vmovdqa ymm0, [rdx+64]
+    vpcmpeqb ymm0,ymm0,ymm1
+    ; pmovmskb r8d,  xmm0
+
+    ; ptest xmm0, xmm0
+    vpmovmskb r8d, ymm0
+
+    test r8d, r8d
+    jnz  .avxfound64
+
+    ; add rdx, r9
+
+    vmovdqa ymm0, [rdx+96]
+    vpcmpeqb ymm0,ymm0,ymm1
+    ; pmovmskb r8d,  xmm0
+
+    ; ptest xmm0, xmm0
+    vpmovmskb r8d, ymm0
+
+    test r8d, r8d
+    jnz  .avxfound96
+
+    add rdx, 128
+
+    jmp .avxloop
+
+.avxfound96:
+
+    add rdx, 96
+    jmp .avxfound
+
+.avxfound64:
+
+    add rdx, 64
+    jmp .avxfound
+
+.avxfound32:
+
+    add rdx, 32
+
+.avxfound:
+
+    vzeroupper
+
+    sub rdx, rax
+    bsf eax, r8d
+    add rax, rdx
+
+    ret
+
+.gofound:
+
+    bsf eax, r8d
+    add rax, 16
+    sub rax, rcx
+    ret
+
+.found:
+
+    bsf eax, r8d
+    ret
+
+.np:
+
+    xor eax, eax
+    ret
+
+
+
+; sse2的strlen增强版爆改kana_avx2
+; rcx = src
+; 这里把吉祥物（没有图，我yy的）名字放上去吧
+; kana必须是个美少女啊，以后找个人给我吉祥物画本子
+; 叫卡娜还是咔钠呢我还不知道（2026年10月17日）
+; 咔钠做到了！她做到了！
+; 今天我光荣的宣布，她在L1里面领先glibc约9%，往后性能几乎一样
+kp_kana_avx2_strlen_fastcall_win64:
+
+    test rcx, rcx
+    jz   .np
+
+    vpxor xmm1,xmm1,xmm1
+    ; pxor xmm1, xmm1
+    mov rax, rcx
+
+    mov rdx, rcx
+    ; mov r9,  32
+
+    and rdx, -32
+    cmp rdx, rcx
+    ; 我真的不理解一百万个初学者都会犯的错：以为test之后je，实际上并不是相等的意思
+
+    je .beforeavx
+
+    sub rcx, rdx
+
+    ; vmovdqa   ymm0, [rdx]
+    ; vpcmpeqb ymm0,ymm0,ymm1
+    ; vpmovmskb r8d,  ymm0
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    shr r8d, cl
+
+    test r8d, r8d
+    jnz  .found
+
+    add rdx, 16
+
+    movdqa   xmm0, [rdx]
+    pcmpeqb  xmm0, xmm1
+    pmovmskb r8d,  xmm0
+
+    test r8d, r8d
+    jnz  .gofound
+
+    add rdx, 16
+
+.beforeavx:
+
+    ; vpxor xmm0,xmm0,xmm0
+
+    ; rax = src
+
+    test rdx, 127
+    je   .avxloop
+
+    vmovdqa ymm0, [rdx]
+    vpcmpeqb ymm0,ymm0,ymm1
+    ; pmovmskb r8d,  xmm0
+
+    ; vptest ymm0,ymm0
+    vpmovmskb r8d, ymm0
+
+    test r8d, r8d
+    jnz  .end
+
+    ; add rdx, r9
+    add rdx, 32
+
+    jmp .beforeavx
+
+.avxloop:
+
+    vpcmpeqb ymm2, ymm1, [rdx]
+    vpcmpeqb ymm3, ymm1, [rdx+32]
+    
+    ; vpmovmskb r8d, ymm2
+    ; vpmovmskb r9d, ymm3
+    
+    ; shl r9, 32
+    ; or  r8, r9
+    ; mov r9, r8
+
+    vpcmpeqb ymm4, ymm1, [rdx+64]
+    vpcmpeqb ymm5, ymm1, [rdx+96]
+
+    ; vpmovmskb r10d, ymm4
+    ; vpmovmskb r11d, ymm5
+
+
+    ; shl r11, 32
+    ; or  r10, r11
+    ; or  r8,  r9
+    ; mov r11, r10
+
+    ; test r8, r8
+    ; jnz  .avxfound
+
+    ; test r10, r10
+    ; jnz  .backward
+
+    ; or   r8, r10
+    ; test r8, r8
+
+    vpor ymm0,ymm2,ymm3
+    vpor ymm0,ymm4,ymm0
+    vpor ymm0,ymm5,ymm0
+
+    vptest ymm0, ymm0
+
+    jnz .avxfound
+
+    add rdx, 128
+    jmp .avxloop
+
+; .backward:
+
+;     add rdx, 64
+;     mov r8d, r10d
+
+.avxfound:
+
+    vpmovmskb r8d, ymm2
+    vpmovmskb r9d, ymm3
+
+    shl r9, 32
+    or  r8, r9
+
+    test r8, r8
+    jnz  .end
+
+    vpmovmskb r8d, ymm4
+    vpmovmskb r9d, ymm5
+
+    add rdx, 64
+    shl r9,  32
+    or  r8,  r9
+
+.end:
+
+    vzeroupper
+
+    sub rdx, rax
+    bsf rax, r8
+    add rax, rdx
+
+    ret
+
+.gofound:
+
+    bsf eax, r8d
+    add rax, 16
+    sub rax, rcx
+    ret
+
+.found:
+
+    bsf eax, r8d
+    ret
+
+.np:
+
+    xor eax, eax
+    ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5450,6 +5852,8 @@ ksignlabel:
     ; 你还别说这波奇酱（其实是樋口愛）写的词是真牛逼
     ; 窗口实在是太复杂啦，注册窗口类和创建都快搞死我咯
     ; Playing：《冬の花》-AI东雪莲
+    ; 沉迷电脑，导致了strlen革命，kana_avx2版本赢了gblic的！
+    ; 我的天啊我都不知道写了多少个strlen
 
 ; 2026年10月17日
 
