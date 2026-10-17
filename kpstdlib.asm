@@ -108,11 +108,6 @@
 
 ;kmarco.inc
 
-    ; Copyright (c) 2026-8086 KUSSA (KUSSA_LTSC)
-    ; All rights reserved.
-    ;
-    ; SPDX-License-Identifier: LicenseRef-scancode-kudos-sal-2.5
-
     ; %macro adod 0
     ;     push rbp
     ;     mov rbp , rsp
@@ -2741,7 +2736,7 @@ kp_win32api_read_file_fastcall_win64:
 
     adod
 
-    push NULL ;对齐
+    push rax  ;对齐
     push NULL
 
     sub  rsp, 32
@@ -3238,17 +3233,21 @@ kp_text_utf8_single_symbol_decode_inside:
     ret
 
 .werr:
-    sub rsi, 2
-    xor eax, eax
-    ret
+    ; sub rsi, 2
+    ; xor eax, eax
+    ; ret
 
 .terr:
-    sub rsi, 3
-    xor eax, eax
-    ret
+    ; sub rsi, 3
+    ; xor eax, eax
+    ; ret
 
 .derr:
-    sub rsi, 4
+    ; sub rsi, 4
+    ; xor eax, eax
+    ; ret
+
+    dec rsi
     xor eax, eax
     ret
 
@@ -4144,7 +4143,7 @@ kp_sse2_strcpy_fastcall_win64:
 
     cld;还是加上吧
 
-    mov rcx, r9
+    mov rcx, rdx
     rep movsb
 
     mov r8,  rdi
@@ -4334,7 +4333,7 @@ kp_avx2_strcpy_fastcall_win64:
 
     cld;还是加上吧
 
-    mov rcx, r9
+    mov rcx, rdx
     rep movsb
 
     mov r8,  rdi
