@@ -491,7 +491,7 @@ global  kp_exit_fastcall_win64
 global  kp_create_window_ex_w_fastcall_win64
 global  kp_enhanced_avx2_strlen_fastcall_win64
 
-global kp_kana_avx2_strlen_fastcall_win64
+global  kp_kana_avx2_strlen_fastcall_win64
 
 ;======WIN32API======
 
@@ -5207,25 +5207,25 @@ kp_enhanced_avx2_strlen_fastcall_win64:
     ; vpcmpeqb ymm0,ymm0,ymm1
     ; vpmovmskb r8d,  ymm0
 
-    movdqa   xmm0, [rdx]
-    pcmpeqb  xmm0, xmm1
-    pmovmskb r8d,  xmm0
+    vmovdqa   ymm0, [rdx]
+    vpcmpeqb  ymm0,ymm0, ymm1
+    vpmovmskb r8d,  ymm0
 
     shr r8d, cl
 
     test r8d, r8d
     jnz  .found
 
-    add rdx, 16
+    add rdx, 32
 
-    movdqa   xmm0, [rdx]
-    pcmpeqb  xmm0, xmm1
-    pmovmskb r8d,  xmm0
+    ; movdqa   xmm0, [rdx]
+    ; pcmpeqb  xmm0, xmm1
+    ; pmovmskb r8d,  xmm0
 
-    test r8d, r8d
-    jnz  .gofound
+    ; test r8d, r8d
+    ; jnz  .gofound
 
-    add rdx, 16
+    ; add rdx, 16
 
 .beforeavx:
 
@@ -5325,14 +5325,16 @@ kp_enhanced_avx2_strlen_fastcall_win64:
 
     ret
 
-.gofound:
+; .gofound:
 
-    bsf eax, r8d
-    add rax, 16
-    sub rax, rcx
-    ret
+;     bsf eax, r8d
+;     add rax, 16
+;     sub rax, rcx
+;     ret
 
 .found:
+
+    vzeroupper
 
     bsf eax, r8d
     ret
@@ -5375,25 +5377,16 @@ kp_kana_avx2_strlen_fastcall_win64:
     ; vpcmpeqb ymm0,ymm0,ymm1
     ; vpmovmskb r8d,  ymm0
 
-    movdqa   xmm0, [rdx]
-    pcmpeqb  xmm0, xmm1
-    pmovmskb r8d,  xmm0
+    vmovdqa   ymm0, [rdx]
+    vpcmpeqb  ymm0,ymm0, ymm1
+    vpmovmskb r8d,  ymm0
 
     shr r8d, cl
 
     test r8d, r8d
     jnz  .found
 
-    add rdx, 16
-
-    movdqa   xmm0, [rdx]
-    pcmpeqb  xmm0, xmm1
-    pmovmskb r8d,  xmm0
-
-    test r8d, r8d
-    jnz  .gofound
-
-    add rdx, 16
+    add rdx, 32
 
 .beforeavx:
 
@@ -5453,9 +5446,10 @@ kp_kana_avx2_strlen_fastcall_win64:
     ; test r8, r8
 
     vpor ymm0,ymm2,ymm3
-    vpor ymm0,ymm4,ymm0
-    vpor ymm0,ymm5,ymm0
+    vpor ymm1,ymm4,ymm5
+    vpor ymm0,ymm1,ymm0
 
+    vpxor xmm1,xmm1,xmm1
     vptest ymm0, ymm0
 
     jnz .avxfound
@@ -5496,14 +5490,16 @@ kp_kana_avx2_strlen_fastcall_win64:
 
     ret
 
-.gofound:
+; .gofound:
 
-    bsf eax, r8d
-    add rax, 16
-    sub rax, rcx
-    ret
+;     bsf eax, r8d
+;     add rax, 16
+;     sub rax, rcx
+;     ret
 
 .found:
+
+    vzeroupper
 
     bsf eax, r8d
     ret
