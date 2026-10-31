@@ -86,6 +86,59 @@ k1_strchr_2610:
 
 
 
+;标量memcmp，不检查空指针
+;相等返回末尾指针，不相等返回0，并且往返回地址写偏移+1，没长度返回0 ,返回地址写0
+;（源，源长，目标，返回值指针）
+k1_memcmp_2610:
+
+    test rdx, rdx
+    jz   .np
+
+    cld
+
+    push rsi
+    push rdi
+
+    mov rsi, rcx
+    mov rdi, r8
+
+    xchg rcx, rdx
+
+    repe cmpsb
+
+    jne .ue
+
+    mov rax, rdi
+
+    pop rdi
+    pop rsi
+
+    ret
+
+.ue:
+
+    mov rax,  rsi
+    sub rax,  rdx
+    mov [r9], rax
+    pop rdi
+    pop rsi
+
+    xor eax, eax
+    ret
+
+.np:
+
+    xor eax,  eax
+    mov [r9], rax
+    ret
+
+
+
+
+
+
+
+
 
 
 
