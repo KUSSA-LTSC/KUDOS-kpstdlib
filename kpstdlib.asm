@@ -94,8 +94,17 @@ first_comment:
             ; kd  不分派的特殊或遗留函数
             ; kf  替代 asm 指令（比如kf_emms）
             ; kx  实模式代码
-            ; kc  C 参考实现
+            ; kc  C 语言实现
             ; kw  win32api
+            ; kn  完全按照标准库的行为汇编实现
+            ; km  特殊函数和杂七杂八
+            ; kr  代读寄存器指令
+            ; ko  特殊的输出行为
+            ; ke  各种协议用（比如特殊的字节序改写）
+            ; kz  框架用（待定）
+            ; kt  测试函数
+
+        ; 注意：数字前缀永远不会直接导出，必须通过给init传不同参数来启用
 
         ; 一个例子：
 
@@ -156,6 +165,7 @@ kpic_global_list:
 
         global kp_strlen
         global kp_strchr
+        global kp_memcmp
 
     .string_end:
 
@@ -186,6 +196,10 @@ kp_string:
     kp_strchr:
         jmp qword [kpic_string.strchr]
 
+    ; memcmp
+    kp_memcmp:
+        jmp qword [kpic_string.memcmp]
+
 kp_string_end:
 
 section kpifuncs code
@@ -205,6 +219,7 @@ section .data
 kpic_string:
     .strlen dq k1_strlen_2610
     .strchr dq k1_strchr_2610
+    .memcmp dq k1_memcmp_2610
 
 kpic_string_end:
 
@@ -216,6 +231,7 @@ kpic_win32api_end:
 
 section .text
 
+; 目前必须传NULL一个参数，哪怕现在没用上
 kpicinit:
 
     push rbx
@@ -239,13 +255,8 @@ kpicinit:
     cmp eax, 6
     jne .exit
 
-    lea rdx,   [kpic_string.strlen]
-    lea rax,   [k7_strlen_2610]
-    mov [rdx], rax
-
-    lea rdx,   [kpic_string.strchr]
-    lea rax,   [k5_strchr_2610]
-    mov [rdx], rax
+    ; apartinitfuc
+    call .string
 
     mov eax, 1
     pop rbx
@@ -257,15 +268,25 @@ kpicinit:
     xor eax, eax
     ret
 
+.string:
+
+    lea rdx,   [kpic_string.strlen]
+    lea rax,   [k7_strlen_2610]
+    mov [rdx], rax
+
+    lea rdx,   [kpic_string.strchr]
+    lea rax,   [k5_strchr_2610]
+    mov [rdx], rax
+
+    ret
+
+
+kpicinit_end:
 
 
 
 
-
-
-
-
-
+other_comment:
 
 ; 接下来就是喜闻乐见的更新日志：
 
@@ -328,6 +349,10 @@ kpicinit:
 
     ; 你还别说这波奇酱（其实是樋口愛）写的词是真牛逼
 
+other_comment_end:
+
+update_log:
+
 ; 更新日志：
 
     ; 为了让傻逼AI省点token ，我现在把日期写头头
@@ -341,7 +366,14 @@ kpicinit:
 ; 2026年10月31日
 
     ; 今天给legacy_kpstdlib封板子
-    ; 新增了strchr函数，和旧版行为不同
-    ; 重新调整了调整表，以后的跳转表会有分类
+    ; 新增了kp_strchr、kp_memcmp、kw_exit，但和旧版行为不同
+    ; 重新调整了调整表，以后的跳转表会有分类，文件内新增多个标号用来划分
+    ; 架构再次重大调整更新，更加细分，但是又保证不会过于复杂
+    ; 多文件的测试通过，条件kpic也通过，小小调整头文件，它还没做完
+    ; 现在要求init强制传一个NULL哪怕目前不用，留给以后拓展
+
+update_log_end:
+
+file_end:
 
 ;到底了，就这么多~
