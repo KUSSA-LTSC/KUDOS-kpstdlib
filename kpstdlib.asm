@@ -103,6 +103,16 @@
             ; strlen    函数名
             ; 2610      版号
 
+        ; 重要说明以及警告：
+
+            ; 1.这个库的文字处理标准就是ASCII，对于GBK和UTF-8的支持完全就是意外
+            ; 2.开发过程中不保证函数行为不变，也不保证非kp前缀的特定函数名字不变
+            ; 3.这个库是用nasm写的，稳定优先，代码能跑就不动，性能永远不是首选项
+            ; 4.充分吸取了前面的教训，所有管理架构和函数从设计之初就会留下充足的余地
+            ; 5.这个库的kpic是一刀切的，支持avx2的cpu 才能完整运行所有函数，否则kpic全部按照默认的函数跑
+            ; 6.因为是x86-64平台，所以不支持avx2的cpu最高只能运行sse2优化的代码
+            ; 7.以后可能改变成默认cpu 有sse4并且不支持avx2的最高可以运行到sse4优化的代码
+
 ;……代码往下……
 
 %include 'kpstddef.inc'
@@ -120,29 +130,45 @@ default rel
 
 ; 这个库的立项日期无从考究，但是可以确定在2026年8月26日及以前
 
-global kpicinit
+global  kpicinit
 
 ; 正文：
 
 
-
+; string
 
 global  kp_strlen
+global  kp_strchr
 
 
 %include 'kp_string.asm'
 
 section kpifuncs code
 
+; strlen
 kp_strlen:
-    jmp qword [kpic.strlen]
+    jmp qword [kpic_string.strlen]
+
+; strchr
+kp_strchr:
+    jmp qword [kpic_string.strchr]
+
+
+
+
+
+
+
+
+
 
 section .data
 
-kpic:
+kpic_string:
     .strlen dq k1_strlen_2610
+    .strchr dq k1_strchr_2610
 
-kpic_end:
+kpic_string_end:
 
 section .text
 
@@ -169,8 +195,12 @@ kpicinit:
     cmp eax, 6
     jne .exit
 
-    lea rdx,   [kpic]
+    lea rdx,   [kpic_string.strlen]
     lea rax,   [k7_strlen_2610]
+    mov [rdx], rax
+
+    lea rdx,   [kpic_string.strchr]
+    lea rax,   [k5_strchr_2610]
     mov [rdx], rax
 
     mov eax, 1
@@ -267,5 +297,7 @@ kpicinit:
 ; 2026年10月31日
 
     ; 今天给legacy_kpstdlib封板子
+    ; 新增了strchr函数，和旧版行为不同
+    ; 重新调整了调整表，以后的跳转表会有分类
 
 ;到底了，就这么多~
