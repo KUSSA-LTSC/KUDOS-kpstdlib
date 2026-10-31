@@ -7,7 +7,7 @@ nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj
 if errorlevel 1 goto :fail
 
 echo === 编译链接 C ===
-cl /nologo /utf-8 test.c kpstdlib.obj /link kernel32.lib user32.lib
+cl /nologo /utf-8 test.c kpstdlib.obj /link kernel32.lib user32.lib gdi32.lib
 if errorlevel 1 goto :fail
 
 echo === 成功 ===

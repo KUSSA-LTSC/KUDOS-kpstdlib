@@ -1,5 +1,7 @@
 ; kpstdlib.asm
 
+first_comment:
+
 ;KUSSA's standard library
 ;源码可见，仅供免费教育研究和学习
 ;Copyright (c) 2026-8086 KUSSA. All rights reserved.
@@ -113,11 +115,19 @@
             ; 6.因为是x86-64平台，所以不支持avx2的cpu最高只能运行sse2优化的代码
             ; 7.以后可能改变成默认cpu 有sse4并且不支持avx2的最高可以运行到sse4优化的代码
 
+first_comment_end:
+
 ;……代码往下……
 
-%include 'kpstddef.inc'
+include_inc:
+
+    %include 'kpstddef.inc'
+
+include_inc_end:
 
 ; 这里似乎少了点什么……
+
+second_comment:
 
 bits    64
 default rel
@@ -130,35 +140,63 @@ default rel
 
 ; 这个库的立项日期无从考究，但是可以确定在2026年8月26日及以前
 
-global  kpicinit
+second_comment_end:
+
+global_initfunc:
+
+global kpicinit
+
+global_initfunc_end:
 
 ; 正文：
 
+kpic_global_list:
 
-; string
+    .string:
 
-global  kp_strlen
-global  kp_strchr
+        global kp_strlen
+        global kp_strchr
 
+    .string_end:
+
+    .win32api:
+
+        global kw_exit
+
+    .win32api_end:
+
+kpic_global_list_end:
+
+include_file_list:
 
 %include 'kp_string.asm'
+%include 'kp_win32api.asm'
+
+include_file_list_end:
 
 section kpifuncs code
 
-; strlen
-kp_strlen:
-    jmp qword [kpic_string.strlen]
+kp_string:
 
-; strchr
-kp_strchr:
-    jmp qword [kpic_string.strchr]
+    ; strlen
+    kp_strlen:
+        jmp qword [kpic_string.strlen]
 
+    ; strchr
+    kp_strchr:
+        jmp qword [kpic_string.strchr]
 
+kp_string_end:
 
+section kpifuncs code
 
+kp_win32api:
 
+    ; ExitProcess
+    kw_exit:
+        jmp qword [kpic_win32api.exit]
 
-
+kp_win32api_end:
 
 
 
@@ -169,6 +207,12 @@ kpic_string:
     .strchr dq k1_strchr_2610
 
 kpic_string_end:
+
+kpic_win32api:
+
+    .exit dq kw_exit_2610
+
+kpic_win32api_end:
 
 section .text
 
