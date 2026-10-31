@@ -19,7 +19,7 @@ typedef signed short is;
 
 typedef struct kpstruct
 {
-    ix bool;
+    ix kbol;
     ix koto;
 }kp;
 
