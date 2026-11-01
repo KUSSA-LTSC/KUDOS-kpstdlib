@@ -189,16 +189,13 @@ section kpifuncs code
 kp_string:
 
     ; strlen
-    kp_strlen:
-        jmp qword [kpic_string.strlen]
+    ksjf kpic_string, strlen, kp
 
     ; strchr
-    kp_strchr:
-        jmp qword [kpic_string.strchr]
+    ksjf kpic_string, strchr, kp
 
     ; memcmp
-    kp_memcmp:
-        jmp qword [kpic_string.memcmp]
+    ksjf kpic_string, memcmp, kp
 
 kp_string_end:
 
@@ -207,8 +204,7 @@ section kpifuncs code
 kp_win32api:
 
     ; ExitProcess
-    kw_exit:
-        jmp qword [kpic_win32api.exit]
+    ksjf kpic_win32api, exit, kw 
 
 kp_win32api_end:
 
@@ -270,13 +266,8 @@ kpicinit:
 
 .string:
 
-    lea rdx,   [kpic_string.strlen]
-    lea rax,   [k7_strlen_2610]
-    mov [rdx], rax
-
-    lea rdx,   [kpic_string.strchr]
-    lea rax,   [k5_strchr_2610]
-    mov [rdx], rax
+    kslf kpic_string, strlen, k7_strlen_2610
+    kslf kpic_string, strchr, k5_strchr_2610
 
     ret
 
@@ -371,6 +362,20 @@ update_log:
     ; 架构再次重大调整更新，更加细分，但是又保证不会过于复杂
     ; 多文件的测试通过，条件kpic也通过，小小调整头文件，它还没做完
     ; 现在要求init强制传一个NULL哪怕目前不用，留给以后拓展
+
+; 2026年11月1日
+
+    ; 给我的VisualStudioCode加了个能显示背景图片的插件
+    ; 基础宏kpstdinc现在有定义保护
+    ; 现在可以用kslf和ksjf的两个宏来写和管理跳转表和跳转导出函数
+    ; 用新的宏重写了初始化函数和导出函数
+    ; 以及诸多小小的改进，简单测试了三次
+    ; 以后可能会有很多分开的文件，我觉得不合并可能更好，虽然文件会很杂很多
+    ; 不太可能用二级文件夹来管理，那样只会更麻烦而且我用不上
+    ; 必须注意的是：前缀比如kw之类的只能在ksjf那里指定
+    ; 比如kp_strlen 这种必须在kslf里写成：kslf kpic_string, strlen, k7_strlen_2610
+    ; 必须注意的是，宏的参数必须用', '（英文逗号，空格）来分割
+    ; 宏kslf不用写kp之类的前缀，然后前缀会在ksjf里添加指定
 
 update_log_end:
 
