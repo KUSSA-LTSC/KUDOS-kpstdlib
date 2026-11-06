@@ -13,6 +13,6 @@ extern ExitProcess
 
 section kw code 
 
-kw_exit_2610:
+kp_exit_2610:
     jmp ExitProcess
 

@@ -1,5 +1,14 @@
 ; kpstdlib.asm
 
+; 版本：0.1.3.2611
+; 开发代号：Horizon
+
+section .data
+    build_date: db __DATE__, 0
+    build_time: db __TIME__, 0
+
+section .text
+
 first_comment:
 
 ;KUSSA's standard library
@@ -77,6 +86,15 @@ first_comment:
 
     ; 各种说明：
 
+        ; 版本号说明：
+
+            ; 0.1.3.2611
+
+                ; 0         代表大版本号
+                ; 1         代表小版本号
+                ; 3         代表修订号
+                ; 2611      代表月份，2026年11月
+
         ; 各种前缀：
 
             ; k0  绝对稳定
@@ -91,18 +109,59 @@ first_comment:
             ; k9  APX（等有再说）
             ; ks  服务器级别，借鉴的
             ; kp  导出跳板，调用者只认这个
-            ; kd  不分派的特殊或遗留函数
-            ; kf  替代 asm 指令（比如kf_emms）
-            ; kx  实模式代码
-            ; kc  C 语言实现
-            ; kw  win32api
-            ; kn  完全按照标准库的行为汇编实现
+            ; kd  调试（仅主文件，其他文件额外提供）
+            ; kf  框架
+            ; kx  拓展
+            ; kc  拓展
+            ; kw  Wrap包装
+            ; kn  拓展
             ; km  特殊函数和杂七杂八
-            ; kr  代读寄存器指令
-            ; ko  特殊的输出行为
-            ; ke  各种协议用（比如特殊的字节序改写）
-            ; kz  框架用（待定）
-            ; kt  测试函数
+            ; kr  注册
+            ; ko  输出
+            ; ke  基础拓展
+            ; kz  拓展
+            ; kt  拓展
+
+        ; 重新设计的函数划分：
+
+            ; KPSTDLIB_CORE
+
+                ; CoreInit
+                ; String
+                ; Calc
+                ; Math
+                ; Time
+                ; Text
+                ; Encode
+                ; Decode
+                ; Input
+                ; Output
+                ; StdApiWrap
+                ; DebugEditionWrap
+
+            ; ExtensionNameReservation
+
+                ; AL-1S
+                ; Bocchi
+                ; California
+                
+                ; Xp
+                ; Yamada
+                ; Zero
+
+                ; Misc
+                ; Wrap
+                ; Nijika
+
+                ; Kita
+                ; Vista
+                ; Hiroi
+
+                ; Guangdong
+                ; Jealousy
+                ; Quotient
+
+                ; Thunder
 
         ; 注意：数字前缀永远不会直接导出，必须通过给init传不同参数来启用
 
@@ -204,13 +263,15 @@ section kpifuncs code
 kp_win32api:
 
     ; ExitProcess
-    ksjf kpic_win32api, exit, kw 
+    ksjf kpic_win32api, exit, kp 
 
 kp_win32api_end:
 
 
 
 section .data
+
+align 16
 
 kpic_string:
     .strlen dq k1_strlen_2610
@@ -221,14 +282,30 @@ kpic_string_end:
 
 kpic_win32api:
 
-    .exit dq kw_exit_2610
+    .exit dq kp_exit_2610
 
 kpic_win32api_end:
 
+section .data
+
+    ; 初始化标志
+    initsign dq 0
+
 section .text
 
-; 目前必须传NULL一个参数，哪怕现在没用上
+; 目前必须传NULL一个参数，哪怕现在没用上，只能把返回零作为失败，千万不能检查成功返回值
 kpicinit:
+
+    test qword [initsign], -1
+    jz   .init
+
+    mov eax, 1
+    ret
+
+.init:
+
+    mov [initsign],       rcx
+    or  qword [initsign], 1
 
     push rbx
 
@@ -270,6 +347,7 @@ kpicinit:
     kslf kpic_string, strchr, k5_strchr_2610
 
     ret
+
 
 
 kpicinit_end:
@@ -340,6 +418,43 @@ other_comment:
 
     ; 你还别说这波奇酱（其实是樋口愛）写的词是真牛逼
 
+; 环境信息：
+
+    ; 系统信息：
+
+        ; 操作系统  : Windows 10 专业工作站版 (22H2, Build 19045)
+        ; 系统类型  : 基于 x64 的电脑
+        ; 主板型号  : Gigabyte B85M-D3H
+
+        ; 处理器    : Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz
+        ; 架构代号  : Haswell
+        ; 核心/线程 : 4 核 4 线程 
+
+            ; SSE2      : 支持
+            ; SSE4.2    : 支持
+            ; AVX       : 支持
+            ; AVX2      : 支持
+            ; AVX-512   : 不支持
+            ; APX       : 不支持
+
+    ; 构建工具：
+
+        ; NASM version 2.16.03 compiled on Jun  3 2024
+
+        ; gcc (Rev9, Built by MSYS2 project) 15.2.0
+        ; Copyright (C) 2025 Free Software Foundation, Inc.
+        ; This is free software; see the source for copying conditions.  There is NO
+        ; warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+        ; Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36257 for x64
+        ; 版权所有(C) Microsoft Corporation。保留所有权利。
+
+        ;  Microsoft (R) Macro Assembler (x64) Version 14.51.36257.0
+        ; Copyright (C) Microsoft Corporation.  All rights reserved.   
+
+        ; Microsoft (R) Incremental Linker Version 14.51.36257.0
+        ; Copyright (C) Microsoft Corporation.  All rights reserved.
+
 other_comment_end:
 
 update_log:
@@ -366,7 +481,8 @@ update_log:
 ; 2026年11月1日
 
     ; 给我的VisualStudioCode加了个能显示背景图片的插件
-    ; 基础宏kpstdinc现在有定义保护
+    ; 现在背景里面有着喜多鬱代和山田涼的两个大头
+    ; 基础宏kpstdinc现在有定义保护，方便以后重复包含
     ; 现在可以用kslf和ksjf的两个宏来写和管理跳转表和跳转导出函数
     ; 用新的宏重写了初始化函数和导出函数
     ; 以及诸多小小的改进，简单测试了三次
@@ -376,6 +492,15 @@ update_log:
     ; 比如kp_strlen 这种必须在kslf里写成：kslf kpic_string, strlen, k7_strlen_2610
     ; 必须注意的是，宏的参数必须用', '（英文逗号，空格）来分割
     ; 宏kslf不用写kp之类的前缀，然后前缀会在ksjf里添加指定
+
+; 2026年11月6日
+
+    ; 重新设计了函数划分，现在所有核心函数都是kp开头，其DebugEdition为kd开头
+    ; 保留许多前缀用来作为拓展名字，比如以后kb就是Bocchi拓展的函数
+    ; 拓展函数的DebugEdition会重新设计一个前缀，或者直接tb开头，比如tb_bocchifuncname
+    ; 新增kall，kpsh，kpop宏，但是还没有使用和测试
+    ; 新加版本号标识，还有个没有任何意义的开发代号
+    ; 准备提供头文件，用来开发C 代码
 
 update_log_end:
 
