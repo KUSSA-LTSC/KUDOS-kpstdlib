@@ -4,6 +4,10 @@
 
 // cl /nologo /W4 /utf-8 cfgt.c kpstdlib.obj /link kernel32.lib user32.lib
 
+// 或者（非常不推荐）
+
+// gcc cfgt.c kpstdlib.obj -o cfgt.exe -lkernel32 -luser32 -w -std=gnu89
+
 // 简单想法：
 
     // 我打算就是个纯文本吧，目前就叫settings.ini
