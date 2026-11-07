@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.5.2611
+; 版本：0.1.6.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -28,8 +28,9 @@ first_comment:
     ; 它好用吗：不一定，但是除了win32api封装以外都会返回NULL代表失败
     ; NULL是个常量，等于零
     ; 怎么考虑更新内容的：我需要啥我就写啥
-    ; 为啥要封装系统api：为了让我更好记住，为了能方便维护和移植，为了写程序更方便
-    ; 再说你为啥要学汇编：它能让你更好理解代码的工作，以及解决非常多匪夷所思的BUG
+    ; 为啥要封装系统 api：为了让我更好记住，为了能方便维护和移植，为了写程序更方便
+    ; 而且有些系统的 api  我经常要反复传同样的几个参数，不如直接固定一个包装少打字
+    ; 再说你为啥要学汇编：它能让你更好理解代码的工作，以及解决非常多匪夷所思的 BUG
     ; 但是学习汇编对于大多数人来讲并不容易
     ; 我是例外，我反而写C代码总是出问题，还不会修BUG，我觉得我的C实在太差劲啦
     ; 它性能会比CRT更好吗：不会，差不少，可能某些激进的函数会快一点点点，但是UCRT的话真的实在太保守啦
@@ -298,7 +299,7 @@ kp_win32api_end:
 
 section .data
 
-align 16
+align   16
 
 kpic_string:
     .strlen dq k1_strlen_2610
@@ -310,11 +311,11 @@ kpic_string_end:
 
 kpic_win32api:
 
-    .exit dq kp_exit_2610
+    .exit  dq kp_exit_2610
     .error dq kp_error_2611
     .quest dq kp_quest_2611
-    .warn dq kp_warn_2611
-    .info dq kp_info_2611
+    .warn  dq kp_warn_2611
+    .info  dq kp_info_2611
 
 kpic_win32api_end:
 
@@ -322,6 +323,8 @@ section .data
 
     ; 初始化标志
     initsign dq 0
+    ; 初始化参数备份
+    initoval dq 0
 
 section .text
 
@@ -336,8 +339,10 @@ kpicinit:
 
 .init:
 
-    mov [initsign],       rcx
+    ; mov [initsign],       rcx
     or  qword [initsign], 1
+
+    mov [initoval], rcx
 
     push rbx
 
