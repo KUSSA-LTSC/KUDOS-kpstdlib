@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.3.2611
+; 版本：0.1.4.2611
 ; 开发代号：Horizon
 
 section .data
@@ -230,7 +230,7 @@ kpic_global_list:
 
     .win32api:
 
-        global kw_exit
+        global kp_exit
 
     .win32api_end:
 
