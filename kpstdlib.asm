@@ -1,7 +1,9 @@
 ; kpstdlib.asm
 
-; 版本：0.1.4.2611
+; 版本：0.1.5.2611
 ; 开发代号：Horizon
+
+; 不是和UCRT水火不容，是我不满意的函数才会自己写
 
 section .data
     build_date: db __DATE__, 0
@@ -234,6 +236,7 @@ kpic_global_list:
         global kp_strlen
         global kp_strchr
         global kp_memcmp
+        global kp_strstr
 
     .string_end:
 
@@ -269,6 +272,9 @@ kp_string:
     ; memcmp
     ksjf kpic_string, memcmp, kp
 
+    ; strstr
+    ksjf kpic_string, strstr, kp
+
 kp_string_end:
 
 section kpifuncs code
@@ -298,6 +304,7 @@ kpic_string:
     .strlen dq k1_strlen_2610
     .strchr dq k1_strchr_2610
     .memcmp dq k1_memcmp_2610
+    .strstr dq k1_strstr_2611
 
 kpic_string_end:
 
@@ -526,6 +533,12 @@ update_log:
     ; 新增kall，kpsh，kpop宏，但是还没有使用和测试
     ; 新加版本号标识，还有个没有任何意义的开发代号
     ; 准备提供头文件，用来开发C 代码
+
+; 2026年11月7日
+
+    ; 老年痴呆，我也忘了今天写了啥，反正很多
+    ; 正式开始提供头文件，完善了说明和代码的头文件，新增kp_strstr
+    ; 新写个cfgt.c的测试，我的C 代码就是一坨狗屎，这点东西写那么久
 
 update_log_end:
 

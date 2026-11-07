@@ -86,9 +86,9 @@ k1_strchr_2610:
 
 
 
-;标量memcmp，不检查空指针
-;相等返回末尾指针，不相等返回0，并且往返回地址写偏移+1，没长度返回0 ,返回地址写0
-;（源，源长，目标，返回值指针）
+; 标量memcmp，不检查空指针
+; 相等返回末尾指针，不相等返回0，并且往返回地址写偏移+1，没长度返回0 ,返回地址写0
+; （源，源长，目标，返回值指针）
 k1_memcmp_2610:
 
     test rdx, rdx
@@ -135,9 +135,147 @@ k1_memcmp_2610:
 
 
 
+; 标量strstr，不检查空指针
+; 返回索引+1，零代表没有找到
+; 源长是负数就自动算，目标长必须填
+; （源，源长，目标，目标长）
+k1_strstr_2611:
 
+    ; 不管了代码能跑就不动
 
+    test r9, r9
+    jz   .np
 
+    test rdx, rdx
+    jz   .np
+    jns  .havelen
+
+    push rcx
+    push r8
+    push r9
+
+    sub rsp, 32
+
+    call kp_strlen
+
+    add rsp, 32
+
+    pop r9
+    pop r8
+    pop rcx
+
+    mov rdx, rax
+
+    test rax, rax
+    jz   .np
+
+.havelen:
+
+    cmp rdx, r9
+    ja  .np
+
+    push r15
+    push r14
+    push r13
+    push r12
+
+    push rsi
+    push rdi
+
+    ; mov r15, r9
+
+    mov r14, r8
+    mov r13, rdx
+    mov r12, rcx
+
+    ; 这两行狗屎代码千万不能改
+    not rdx
+    lea r15, [r9+rdx+2]
+
+    mov rsi, rcx
+
+; r15   目标长
+; r14   目标
+; r13   源长
+; r12   源
+
+    push r14
+
+.main:
+
+    mov rdx, r14
+    mov r8,  r15
+    mov r9b, [r12]
+
+    sub rsp, 32
+
+    call kp_strchr
+
+    add rsp, 32
+
+    test rax, rax
+    ; jz   .notfound
+    jnz  .nozero
+    
+    mov r9b, [r12]
+    cmp r9b, [r14+rax]
+    jne .notfound
+
+.nozero:
+
+    ;第一个字母找到之后到这里
+    lea rdi, [r14+rax-1]
+    mov r14, rdi
+
+    mov rcx, r13
+    repe cmpsb
+
+    ; je .found
+    je .normalexit
+
+    mov rsi, r12
+    ; lea r14, [r14+rax+1]
+    inc r14
+    sub r15, rax
+    ; dec r15
+
+    jbe .notfound
+    jmp .main
+
+.normalexit:
+
+    mov rax, r14
+    pop r14
+    sub rax, r14
+    ;rax就是索引
+    inc rax
+
+    pop rdi
+    pop rsi
+
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+    ret
+
+.notfound:
+
+    pop r14
+
+    pop rdi
+    pop rsi
+
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+.np:
+
+    xor eax, eax
+    ret
 
 
 
