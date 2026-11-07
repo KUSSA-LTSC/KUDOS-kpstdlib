@@ -183,6 +183,15 @@ first_comment:
             ; 6.因为是x86-64平台，所以不支持avx2的cpu最高只能运行sse2优化的代码
             ; 7.以后可能改变成默认cpu 有sse4并且不支持avx2的最高可以运行到sse4优化的代码
 
+    ; 新增一个函数要注意什么：
+
+        ; 1.检查这主文件有没有包含这个文件
+        ; 2.检查这个文件有没包含kpstddef定义
+        ; 3.检查这个文件有没包含这个函数的声明
+        ; 4.检查这个文件有没包含这个函数的实现
+        ; 5.检查这个文件有没包含这个函数的初始化
+        ; 6.检查头文件有没包含这个函数的声明以及注释
+
 first_comment_end:
 
 ;……代码往下……
@@ -231,6 +240,10 @@ kpic_global_list:
     .win32api:
 
         global kp_exit
+        global kp_error
+        global kp_quest
+        global kp_warn
+        global kp_info
 
     .win32api_end:
 
@@ -264,6 +277,14 @@ kp_win32api:
 
     ; ExitProcess
     ksjf kpic_win32api, exit, kp 
+    ; ErrorMsgBox
+    ksjf kpic_win32api, error, kp
+    ; QuestionMsgBox
+    ksjf kpic_win32api, quest, kp
+    ; WarningMsgBox
+    ksjf kpic_win32api, warn, kp
+    ; InformationMsgBox
+    ksjf kpic_win32api, info, kp
 
 kp_win32api_end:
 
@@ -283,6 +304,10 @@ kpic_string_end:
 kpic_win32api:
 
     .exit dq kp_exit_2610
+    .error dq kp_error_2611
+    .quest dq kp_quest_2611
+    .warn dq kp_warn_2611
+    .info dq kp_info_2611
 
 kpic_win32api_end:
 
