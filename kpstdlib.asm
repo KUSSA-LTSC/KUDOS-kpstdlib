@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.6.2611
+; 版本：0.1.7.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -260,7 +260,10 @@ include_file_list:
 
 include_file_list_end:
 
+    
 section kpifuncs code
+    
+    align 16
 
 kp_string:
 
@@ -319,7 +322,10 @@ kpic_win32api:
 
 kpic_win32api_end:
 
+    
 section .data
+
+    align 16
 
     ; 初始化标志
     initsign dq 0
@@ -327,6 +333,8 @@ section .data
     initoval dq 0
 
 section .text
+
+    align 16
 
 ; 目前必须传NULL一个参数，哪怕现在没用上，只能把返回零作为失败，千万不能检查成功返回值
 kpicinit:
@@ -340,7 +348,7 @@ kpicinit:
 .init:
 
     ; mov [initsign],       rcx
-    or  qword [initsign], 1
+    or qword [initsign], 1
 
     mov [initoval], rcx
 
@@ -544,6 +552,12 @@ update_log:
     ; 老年痴呆，我也忘了今天写了啥，反正很多
     ; 正式开始提供头文件，完善了说明和代码的头文件，新增kp_strstr
     ; 新写个cfgt.c的测试，我的C 代码就是一坨狗屎，这点东西写那么久
+
+; 2026年11月8日
+
+    ; 打算提供额外的参考文档和笔记
+    ; 对库小修小补，基本就是规划上的
+    ; 重新提供 launcher.asm 带有init
 
 update_log_end:
 
