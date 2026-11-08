@@ -13,12 +13,23 @@ default rel
 
 extern  luck
 extern  ExitProcess
+extern  kpicinit
 
 global  duck
 
 section .text
 
 duck:
+
+    adod
+
+    sub rsp, 32
+
+    xor ecx, ecx
+
+    call kpicinit
+
+    pdod
 
     adod
 
@@ -32,7 +43,7 @@ duck:
 
     sub rsp, 32
 
-    mov rcx,rax
+    mov rcx, rax
 
     call ExitProcess
 
