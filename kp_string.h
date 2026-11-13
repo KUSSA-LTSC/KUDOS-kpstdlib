@@ -15,7 +15,7 @@ ux kp_strchr(ux dust, const uc *str, ux strlen, uc ch);
 // memcmp，不检查空指针
 // 相等返回末尾指针，不相等返回0，并且往返回地址写偏移+1，没长度返回0 ,返回地址写0
 // （源，源长，目标，返回值指针）
-ux kp_memcmp(px src, ux srclen , px dst , px returnval);
+ux *kp_memcmp(px src, ux srclen, px dst, px returnval);
 // strstr，不检查空指针
 // 返回索引+1，零代表没有找到
 // 源长是负数就自动算，目标长必须填
