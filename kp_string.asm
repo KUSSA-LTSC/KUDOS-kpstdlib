@@ -87,8 +87,9 @@ k1_strchr_2610:
 
 
 ; 标量memcmp，不检查空指针
-; 相等返回末尾指针，不相等返回0，并且往返回地址写偏移+1，没长度返回0 ,返回地址写0
-; （源，源长，目标，返回值指针）
+; 相等返回非 0，不相等返回 0
+; （源，源长，目标，保留参数）
+; 保留参数目前给 0就行
 k1_memcmp_2610:
 
     test rdx, rdx
@@ -96,8 +97,10 @@ k1_memcmp_2610:
 
     cld
 
-    push rsi
-    push rdi
+    mov r9, rcx
+
+    mov r10, rsi
+    mov r11, rdi
 
     mov rsi, rcx
     mov rdi, r8
@@ -110,26 +113,22 @@ k1_memcmp_2610:
 
     mov rax, rdi
 
-    pop rdi
-    pop rsi
+    mov rsi, r10
+    mov rdi, r11
 
     ret
 
 .ue:
 
-    mov rax,  rsi
-    sub rax,  rdx
-    mov [r9], rax
-    pop rdi
-    pop rsi
+    mov rsi, r10
+    mov rdi, r11
 
     xor eax, eax
     ret
 
 .np:
 
-    xor eax,  eax
-    mov [r9], rax
+    mov rax, rcx
     ret
 
 
