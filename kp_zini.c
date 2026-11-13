@@ -144,4 +144,20 @@ uc *ke_aini(px zone, px section, px label, px key)
     return (uc *)((ux)zone + a + c);
 }
 
+// 找到键值后复制
+// （键值指针，标志，目标缓冲区，目标缓冲区长度）
+// 标志目前给 0就可以
+// 成功返回指针，失败或空内容返回 0
+uc *cini(uc *src, ux bitmap, uc *dst, ux dstlen)
+{
+    ux a = kp_strchr(0, src, (ux)-1, ']') - 1;
+    if (a == (ux)-1 or a == 0 or a >= dstlen)
+    {
+        return 0;
+    }
+    kp_movsb(src, a, dst, dstlen);
+    dst[a] = 0;
+    return (uc *)((ux)src + a);
+}
+
 #endif

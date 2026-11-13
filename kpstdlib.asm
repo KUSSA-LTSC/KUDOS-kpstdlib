@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.10.2611
+; 版本：0.1.12.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -97,6 +97,8 @@ first_comment:
                 ; 1         代表小版本号
                 ; 3         代表修订号
                 ; 2611      代表月份，2026年11月
+
+            ; 各个版本号都是累加的，只增不减，月份按时间来写
 
         ; 各种前缀：
 
@@ -224,7 +226,10 @@ default rel
 
     ; 微软：永远不要高估程序员的水平，特别是你的同事。
 
-; 2026 年 11 月 12 日， 英伟达 （NVIDIA）宣布 黄仁勋 辞职，卸任总裁、 首席执行官 （CEO）及董事职务，即刻生效。 执行副总裁 兼首席财务官（CFO） Colette Kress 出任临时 CEO，同时继续担任 CFO。
+; 见证历史：
+
+    ; 2026 年 11 月 12 日， 英伟达 （NVIDIA）宣布 黄仁勋 辞职，卸任总裁、 首席执行官 （CEO）及董事职务，即刻生效。 执行副总裁 兼首席财务官（CFO） Colette Kress 出任临时 CEO，同时继续担任 CFO。
+
 second_comment_end:
 
 global_initfunc:
@@ -243,6 +248,7 @@ kpic_global_list:
         global kp_strchr
         global kp_memcmp
         global kp_strstr
+        global kp_movsb
 
     .string_end:
 
@@ -284,6 +290,9 @@ kp_string:
     ; strstr
     ksjf kpic_string, strstr, kp
 
+    ; movsb
+    ksjf kpic_string, movsb, kp
+
 kp_string_end:
 
 section kpifuncs code
@@ -314,6 +323,7 @@ kpic_string:
     .strchr dq k1_strchr_2610
     .memcmp dq k1_memcmp_2610
     .strstr dq k1_strstr_2611
+    .movsb  dq k1_movsb_2611
 
 kpic_string_end:
 
@@ -569,6 +579,14 @@ update_log:
     ; 全新的基础拓展 stdex.c
     ; 加了点杂七杂八的东西
     ; C 的部分还没有时间测试
+    ; 新增 movsb，但是标量
+    ; 见证历史，NVIDIA CEO黄仁勋辞职
+    ; 英伟达股票有史以来最大一次跌幅
+    ; 主文件和 stdex的版本号可能略有区别，此时需要核对版本号
+    ; 不过只有略微差别的话通常是可以过编译的
+    ; 主文件和 stdex均为 kpstdlib 的必要成分
+    ; 因为如果只有底层库的话完全是不够用的
+    ; 基础拓展的内容迟早要自己写，不如直接放一起，生成两个COFF.OBJ
 
 update_log_end:
 
