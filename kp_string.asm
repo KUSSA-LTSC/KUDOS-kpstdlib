@@ -90,6 +90,7 @@ k1_strchr_2610:
 ; 相等返回非 0，不相等返回 0
 ; （源，源长，目标，保留参数）
 ; 保留参数目前给 0就行
+; 不要比较返回值==true
 k1_memcmp_2610:
 
     test rdx, rdx
@@ -97,7 +98,7 @@ k1_memcmp_2610:
 
     cld
 
-    mov r9, rcx
+    ; mov r9, rcx
 
     mov r10, rsi
     mov r11, rdi
@@ -270,6 +271,40 @@ k1_strstr_2611:
     pop r13
     pop r14
     pop r15
+
+.np:
+
+    xor eax, eax
+    ret
+
+
+
+; 标量 movsb
+; 同时适用于 ermsb，不是 memmove
+; （源，源长，目标，目标长）
+; 目标长给-1可以忽略检查，不推荐
+; 不检查空指针，不补 0，仅失败返回 0
+k1_movsb_2611:
+
+    cmp rdx, r9
+    ja  .np
+
+    cld
+
+    mov r10, rsi
+    mov r11, rdi
+
+    mov rsi, rcx
+    mov rdi, r8
+    mov rcx, rdx
+
+    rep movsb
+
+    mov rsi, r10
+    mov rdi, r11
+
+    mov eax, 1
+    ret
 
 .np:
 
