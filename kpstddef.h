@@ -9,6 +9,7 @@
 typedef unsigned long long ux;
 typedef signed long long ix;
 typedef void *px;
+typedef const void *rp;
 
 typedef unsigned int ui;
 typedef signed int ii;

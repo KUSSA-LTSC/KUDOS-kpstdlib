@@ -7,7 +7,7 @@ nasm -f win64 .\kpstdlib.asm -o .\kpstdlib.obj
 if errorlevel 1 goto :fail
 
 echo === 2. 编译 C 拓展库  ===
-cl /nologo /utf-8 /c kp_stdex.c
+cl /nologo /utf-8 /c kp_stdex.c /W4
 if errorlevel 1 goto :fail
 
 ::echo === 3. 编译业务代码并链接生成 test.exe ===
