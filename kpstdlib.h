@@ -1,5 +1,7 @@
 // kpstdlib.h
 
+// Copyright (c) 2026-8086 KUSSA. All rights reserved.
+
 #ifndef KPSTDLIB_H
 
 #define KPSTDLIB_H

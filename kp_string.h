@@ -1,5 +1,7 @@
 // kp_string.h
 
+// Copyright (c) 2026-8086 KUSSA. All rights reserved.
+
 #ifndef KP_STRING_H
 
 #define KP_STRING_H

@@ -1,5 +1,7 @@
 // kpstddef.h
 
+// Copyright (c) 2026-8086 KUSSA. All rights reserved.
+
 #ifndef KPSTDDEF_H
 
 #define KPSTDDEF_H

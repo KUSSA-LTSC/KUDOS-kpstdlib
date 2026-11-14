@@ -31,13 +31,15 @@ kp_error_2611:
 
     jmp MessageBoxW
 
-kp_quest_2611:
+; （句柄，内容）
+kp_yesno_2611:
 
     lea r8, [question]
-    mov r9, MB_ICONQUESTION
+    mov r9, (MB_ICONQUESTION + MB_YESNO)
 
     jmp MessageBoxW
 
+; （句柄，内容）
 kp_warn_2611:
 
     lea r8, [warning]
@@ -45,9 +47,20 @@ kp_warn_2611:
 
     jmp MessageBoxW
 
+; （句柄，内容）
 kp_info_2611:
 
     lea r8, [information]
     mov r9, MB_ICONINFORMATION
 
     jmp MessageBoxW
+
+; （句柄，内容）
+kp_okc_2611:
+
+    lea r8, [question]
+    mov r9, (MB_ICONQUESTION + MB_OKCANCEL)
+
+    jmp MessageBoxW
+
+

@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.14.2611
+; 版本：0.1.15.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -49,6 +49,18 @@ first_comment:
         ; 4.我强烈建议把文件名，编译命令和环境注释在代码开头，无论任何代码，这份代码通常是utf8保存的，对于cl需要加上/utf-8选项，而GCC就通常默认utf8
         ; 5.没有头文件的这个库，你需要自己准备，或者让AI写，或者直接写extern，本身不需要，但是和CRT以及系统API兼容，但是链接的时候必须要kernel32和user32
         ; 6.这份代码是免费观看的，但是不是开源
+
+    ; 开发版本：
+
+        ; 1.开发版本不保证函数名字、行为、导出名字、参数、返回值等接口稳定
+        ; 2.开发版本不保证函数接口，正式版本对此保证，十分保证，长期保证，但是一个函数从规划到成为正式版需要很久很久
+        ; 3.测试版本的稳定性基本保证，但是开发版本绝对不保证甚至非常不稳定
+
+    ; 正式版本：
+
+        ; 1.正式版本保证函数名字、行为、导出名字、参数、返回值等接口稳定
+        ; 2.正式版本一样可能修改函数的任何内容，但是保证源码100%可迁移
+        ; 3.正式版本函数变更后，依然提供旧版存档兼容函数，通常只用在老代码里面改个名字，甚至不用
 
 ;新版声明：
 
@@ -257,9 +269,10 @@ kpic_global_list:
 
         global kp_exit
         global kp_error
-        global kp_quest
+        global kp_yesno
         global kp_warn
         global kp_info
+        global kp_okc
 
     .win32api_end:
 
@@ -304,12 +317,14 @@ kp_win32api:
     ksjf kpic_win32api, exit, kp 
     ; ErrorMsgBox
     ksjf kpic_win32api, error, kp
-    ; QuestionMsgBox
-    ksjf kpic_win32api, quest, kp
+    ; YesNoMsgBox
+    ksjf kpic_win32api, yesno, kp
     ; WarningMsgBox
     ksjf kpic_win32api, warn, kp
     ; InformationMsgBox
     ksjf kpic_win32api, info, kp
+    ; OkCannelMsgBox
+    ksjf kpic_win32api, okc, kp
 
 kp_win32api_end:
 
@@ -332,9 +347,10 @@ kpic_win32api:
 
     .exit  dq kp_exit_2610
     .error dq kp_error_2611
-    .quest dq kp_quest_2611
+    .yesno dq kp_yesno_2611
     .warn  dq kp_warn_2611
     .info  dq kp_info_2611
+    .okc   dq kp_okc_2611
 
 kpic_win32api_end:
 
@@ -591,7 +607,9 @@ update_log:
 
 ; 2026年11月14日
 
-    ; 今天的更新详见 stdex.c
+    ; 今天的 C侧更新详见 stdex.c
+    ; 修补文档，修改部分行为
+    ; 补上QuestionMsgBox的坑，拆成 yesno和 okc两个
 
 update_log_end:
 

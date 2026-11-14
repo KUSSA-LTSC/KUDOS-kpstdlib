@@ -1,5 +1,7 @@
 // kp_zini.h
 
+// Copyright (c) 2026-8086 KUSSA. All rights reserved.
+
 #ifndef KP_ZINI_H
 
 #define KP_ZINI_H
