@@ -6,12 +6,12 @@
 
 %macro adod 0
     push rbp
-    mov rbp , rsp
-    and rsp , -16
+    mov  rbp, rsp
+    and  rsp, -16
 %endmacro
 
 %macro pdod 0
-    mov rsp,rbp
+    mov rsp, rbp
     pop rbp
 %endmacro    
 
@@ -19,8 +19,8 @@
 
 ; kslf 表名, 槽位名, 实现符号
 %macro kslf 3
-    lea rdx, [%1.%2]
-    lea rax, [%3]
+    lea rdx,   [%1.%2]
+    lea rax,   [%3]
     mov [rdx], rax
 %endmacro
 
@@ -59,43 +59,19 @@
         %endrep
     %endif
 
-    sub rsp, 32
+    sub  rsp, 32
     call %%func
     pdod
 %endmacro
 
-; kpsh 操作数1, 操作数2, 操作数3...
-%macro kpsh 1-*
-    %push kpsh_ctx
-    %assign %$n %0
-
-    %rep %0
-        push %1
-        %rotate 1
-    %endrep
-
-    %assign %%i 0
-    %rep %0
-        %rotate -1
-        %xdefine %$pop_%+%%i %1
-        %assign %%i %%i + 1
-    %endrep
+; shadow
+%macro shadow 0
+    sub rsp, 32
 %endmacro
 
-; kpop
-%macro kpop 0
-    %ifctx kpsh_ctx
-        %assign %%n %$n
-        %assign %%i 0
-        %rep %%n
-            pop %$pop_%+%%i
-            %assign %%i %%i + 1
-        %endrep
-        %pop
-    %else
-        %error "kpop without matching kpsh"
-    %endif
+%macro prbp 0
+    push rbp
+    mov  rbp, rsp
 %endmacro
-
 
 %endif
