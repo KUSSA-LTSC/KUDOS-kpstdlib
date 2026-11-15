@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.15.2611
+; 版本：0.1.16.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -128,13 +128,13 @@ first_comment:
             ; ks  服务器级别，借鉴的
             ; kp  导出跳板，调用者只认这个
             ; kd  调试（仅主文件，其他文件额外提供）
-            ; kf  框架
+            ; kf  拓展
             ; kx  拓展
             ; kc  拓展
-            ; kw  Wrap包装
+            ; kw  拓展
             ; kn  拓展
             ; km  特殊函数和杂七杂八
-            ; kr  注册
+            ; kr  拓展
             ; ko  输出
             ; ke  基础拓展
             ; kz  拓展
@@ -256,6 +256,7 @@ global_initfunc_end:
 
 kpic_global_list:
 
+    ; 字符串、内存
     .string:
 
         global kp_strlen
@@ -266,6 +267,7 @@ kpic_global_list:
 
     .string_end:
 
+    ; 基础 win32api 封装
     .win32api:
 
         global kp_exit
@@ -277,12 +279,22 @@ kpic_global_list:
 
     .win32api_end:
 
+    ; 文本处理
+    .text:
+
+    global kp_itoa
+    global kp_atou
+    global kp_chks_atou
+
+    .text_end:
+
 kpic_global_list_end:
 
 include_file_list:
 
 %include 'kp_string.asm'
 %include 'kp_win32api.asm'
+%include 'kp_text.asm'
 
 include_file_list_end:
 
@@ -329,6 +341,19 @@ kp_win32api:
 
 kp_win32api_end:
 
+section kpifuncs code
+
+kp_text:
+
+    ; itoa
+    ksjf kpic_text, itoa, kp
+    ; atou
+    ksjf kpic_text, atou, kp
+    ; chks_atou
+    ksjf kpic_text, chks_atou, kp
+
+kp_text_end:
+
 
 
 section .data
@@ -355,6 +380,13 @@ kpic_win32api:
 
 kpic_win32api_end:
 
+kpic_text:
+
+    .itoa      dq k1_itoa_2611
+    .atou      dq k1_atou_2611
+    .chks_atou dq k1_chks_atou_2611
+
+kpic_text_end:
     
 section .data
 
@@ -611,6 +643,16 @@ update_log:
     ; 今天的 C侧更新详见 stdex.c
     ; 修补文档，修改部分行为
     ; 补上QuestionMsgBox的坑，拆成 yesno和 okc两个
+
+; 2026年11月15日
+
+    ; 其实现在的版本号没啥意义，只是让我知道哪个更完善一点
+    ; 更新日志的话，基本上目前不会写上任何函数的变更，开发版本也是如此
+    ; 至少要到大版本 1.X才会有真正意义上的更新日志吧
+    ; 依旧移植旧版代码还是标量，但是好歹新开了个文件
+    ; 新增 itoa 和 atou chks_atou 函数，还有各种配套
+    ; 另外的 C代码部分更新看隔壁，好吧其实没多少
+    ; 时不时会加入一些莫名其妙的宏，删除一些有问题的宏
 
 update_log_end:
 

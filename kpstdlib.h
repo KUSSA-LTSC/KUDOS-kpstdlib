@@ -14,6 +14,7 @@
 #include "kpstddef.h"
 #include "kp_string.h"
 #include "kp_win32api.h"
+#include "kp_text.h"
 
 ux kpicinit(ux value);
 

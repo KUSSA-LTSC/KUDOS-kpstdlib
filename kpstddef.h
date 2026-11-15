@@ -26,8 +26,8 @@ typedef signed short is;
 
 typedef struct kpstruct
 {
-    ix kbol;
-    ix koto;
+    ux kbol;
+    ux koto;
 }kp;
 
 
