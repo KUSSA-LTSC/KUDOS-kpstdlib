@@ -146,7 +146,7 @@ loop .checkloop
     jb   .goahead
     call .limit
 
-db '18446744073709551615';2^64-1
+db '18446744073709551615' ;2^64-1
 
 .limit:
     pop r10
@@ -207,7 +207,7 @@ loop .calcloop
 ; （文本，长度）
 ; 按照无符号解析，不允许负号
 ; 不检查空指针
-; 长度给负数的话，自动算，但是后果自负
+; 长度给负数的话，  自动算，但是后果自负
 ; 长度给 0的话算失败
 k1_chks_atou_2611:
 
@@ -236,6 +236,7 @@ k1_chks_atou_2611:
     lea r9,  [atou_xlatable]
 
     xor eax, eax
+    mov r11, r8
 
 .chkloop:
 
@@ -246,6 +247,32 @@ k1_chks_atou_2611:
     inc r8
 
 loop .chkloop
+
+    cmp rdx, 20
+    jne .goahead
+
+    call .limit
+
+db '18446744073709551615'
+
+.limit:
+
+    pop r10
+    mov r8,  r11
+    mov ecx, edx
+
+.limitloop:
+
+    mov al, [r8]
+    cmp al, [r10]
+    jb  .goahead
+    ja  .np
+    inc r8
+    inc r10
+
+loop .limitloop
+
+.goahead:
 
     mov eax, 1
     ret
