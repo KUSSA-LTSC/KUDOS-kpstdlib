@@ -105,7 +105,7 @@ k1_atou_2611:
     prbp
 
     test rdx, rdx
-    jz   .fuckcauseofyournp
+    jz   .panic
     jns  .havelen
 
     push rcx
@@ -114,12 +114,12 @@ k1_atou_2611:
 
     mov  rdx, rax
     test rdx, rdx
-    jz   .fuckcauseofyournp
+    jz   .panic
 
 .havelen:
 
     cmp rdx, 20
-    ja  .fuckcauseofyournp
+    ja  .panic
 
     ; 先检查合法性
     push rbx
@@ -134,13 +134,38 @@ k1_atou_2611:
     mov al, [r8]
     xlat
     cmp al, 0xFF
-    je  .fuckcauseofyournp
+    je  .panic
     inc r8
     
 loop .checkloop
     
     ; 恢复r8
     mov r8, [rsp]
+
+    cmp  rdx, 20
+    jb   .goahead
+    call .limit
+
+db '18446744073709551615';2^64-1
+
+.limit:
+    pop r10
+    mov ecx, edx
+    mov r11, r8
+
+.liloop:
+
+    xor eax, eax
+    mov al,  [r11]
+    cmp al,  [r10]
+    ja  .panic
+    jb  .goahead
+    inc r11
+    inc r10
+
+loop .liloop
+
+.goahead:
 
     mov ecx, edx
     xor edx, edx
@@ -171,7 +196,7 @@ loop .calcloop
 
     ret
     
-.fuckcauseofyournp:
+.panic:
 
     mov [abs 0x00], rax
 
@@ -230,7 +255,7 @@ loop .chkloop
     xor eax, eax
     ret
 
-; （文本，长度）
+; （文本，长度）    
 k1_atoi_2611:
     test rdx, rdx
     jz   .panic
@@ -260,13 +285,22 @@ k1_atoi_2611:
     cmp byte [rcx], ('-')
     je  .negative
 
-    jmp kp_atou
+    jmp .default
 
 .positive:
 
     inc rcx
     dec rdx
-    jmp kp_atou
+
+.default:
+
+    adod
+    shadow
+    call kp_atou
+    pdod
+    bt   rax, 63
+    jc   .panic
+    ret
 
 .negative:
 
