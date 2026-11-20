@@ -229,3 +229,59 @@ loop .chkloop
 
     xor eax, eax
     ret
+
+; （文本，长度）
+k1_atoi_2611:
+    test rdx, rdx
+    jz   .panic
+    jns  .havelen
+
+    push rcx
+    adod
+    shadow
+    call kp_strlen
+    pdod
+    pop  rcx
+    mov  rdx, rax
+
+
+
+.havelen:
+
+    test rdx, rdx
+    jz   .panic
+
+    cmp rdx, 21
+    ja  .panic
+
+    cmp byte [rcx], ('+')
+    je  .positive
+
+    cmp byte [rcx], ('-')
+    je  .negative
+
+    jmp kp_atou
+
+.positive:
+
+    inc rcx
+    dec rdx
+    jmp kp_atou
+
+.negative:
+
+    adod
+    shadow
+    inc  rcx
+    dec  rdx
+    call kp_atou
+    mov  rdx, 0x8000000000000000
+    cmp  rax, rdx
+    ja   .panic
+    neg  rax
+    pdod
+    ret
+
+.panic:
+    xor eax,   eax
+    mov [rax], rsp

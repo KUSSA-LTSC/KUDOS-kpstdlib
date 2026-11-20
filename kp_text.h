@@ -23,4 +23,7 @@ ux kp_atou(uc *str, ux len);
 //只能根据返回 0 判断失败
 ux kp_chks_atou(uc *str, ux len);
 
+// （文本，长度）
+ix kp_atoi(uc *str, ux len);
+
 #endif

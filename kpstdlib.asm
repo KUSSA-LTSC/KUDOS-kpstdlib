@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.16.2611
+; 版本：0.1.17.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -285,6 +285,7 @@ kpic_global_list:
     global kp_itoa
     global kp_atou
     global kp_chks_atou
+    global kp_atoi
 
     .text_end:
 
@@ -351,6 +352,10 @@ kp_text:
     ksjf kpic_text, atou, kp
     ; chks_atou
     ksjf kpic_text, chks_atou, kp
+    ; atoi
+    ksjf kpic_text, atoi, kp
+    ; ; chks_atoi
+    ; ksjf kpic_text, chks_atoi, kp
 
 kp_text_end:
 
@@ -385,6 +390,8 @@ kpic_text:
     .itoa      dq k1_itoa_2611
     .atou      dq k1_atou_2611
     .chks_atou dq k1_chks_atou_2611
+    .atoi      dq k1_atoi_2611
+    ; .chks_atoi dq k1_chks_atoi_2611
 
 kpic_text_end:
     
