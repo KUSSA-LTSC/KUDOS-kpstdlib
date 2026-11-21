@@ -1,6 +1,6 @@
 ; kpstdlib.asm
 
-; 版本：0.1.17.2611
+; 版本：0.1.18.2611
 ; 开发代号：Horizon
 
 ; 不是和UCRT水火不容，是我不满意的函数才会自己写
@@ -248,6 +248,7 @@ second_comment_end:
 
 global_initfunc:
 
+global kpicrsts
 global kpicinit
 
 global_initfunc_end:
@@ -286,6 +287,7 @@ kpic_global_list:
     global kp_atou
     global kp_chks_atou
     global kp_atoi
+    global kp_chks_atoi
 
     .text_end:
 
@@ -354,8 +356,8 @@ kp_text:
     ksjf kpic_text, chks_atou, kp
     ; atoi
     ksjf kpic_text, atoi, kp
-    ; ; chks_atoi
-    ; ksjf kpic_text, chks_atoi, kp
+    ; chks_atoi
+    ksjf kpic_text, chks_atoi, kp
 
 kp_text_end:
 
@@ -391,7 +393,7 @@ kpic_text:
     .atou      dq k1_atou_2611
     .chks_atou dq k1_chks_atou_2611
     .atoi      dq k1_atoi_2611
-    ; .chks_atoi dq k1_chks_atoi_2611
+    .chks_atoi dq k1_chks_atoi_2611
 
 kpic_text_end:
     
@@ -406,11 +408,24 @@ section .data
 
 section .text
 
+; 重新设置标志位，仅适用于虚拟机换 CPU的场景
+; 一个参数，给 0就行，因为现在没有用上
+; 这样不能把参数重置回标量，以后可能才会考虑提供标量重置
+kpicrsts:
+
+    xor eax, eax
+
+    mov [initsign], rax
+    
+    mov eax, 1
+    ret
+
     align 16
 
 ; 目前必须传NULL一个参数，哪怕现在没用上，只能把返回零作为失败，千万不能检查成功返回值
 kpicinit:
 
+    ; 重复跑是没有任何意义的，所以直接跳过
     test qword [initsign], -1
     jz   .init
 
@@ -660,6 +675,16 @@ update_log:
     ; 新增 itoa 和 atou chks_atou 函数，还有各种配套
     ; 另外的 C代码部分更新看隔壁，好吧其实没多少
     ; 时不时会加入一些莫名其妙的宏，删除一些有问题的宏
+
+; 2026年11月21日
+
+    ; 昨天忘了写日志
+    ; 主要是在改 kp_text 的文本转数字和检查部分
+    ; 这个 ai 的自动补全是真的难用，但是还是比我打字快
+    ; 写个代码跟写填空题一样，哈哈
+    ; 给头文件加了个版本号标识，不过好像没什么用
+    ; 这下居然要写三个地方的版本号，有点麻烦
+    ; 要不要把 kp_stdex.c 的版本号去掉呢
 
 update_log_end:
 

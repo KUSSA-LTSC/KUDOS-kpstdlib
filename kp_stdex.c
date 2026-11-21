@@ -11,6 +11,10 @@
 
 // kpstdlib的C 基础拓展の代码部分
 
+/*
+    版本号不一定和主文件同步，需要检查或者尝试编译
+*/
+
 #include "kpstdlib.h"
 
 #include <stdio.h>

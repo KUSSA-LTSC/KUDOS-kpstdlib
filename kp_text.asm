@@ -282,8 +282,16 @@ loop .limitloop
     xor eax, eax
     ret
 
-; （文本，长度）    
+; 把字符变成有符号数字
+; 支持 '+' 和 '-' 前缀，不允许其他符号
+; 不检查空指针
+; （文本，长度）
+; 长度给负数的话，自动算，但是后果自负
+; 长度给 0 或者非法字符会崩溃
+; 调用前必须保证文本绝对合法，建议配合 kp_chks_atoi 使用
+; 返回解析后的有符号数字
 k1_atoi_2611:
+    
     test rdx, rdx
     jz   .panic
     jns  .havelen
@@ -346,3 +354,153 @@ k1_atoi_2611:
 .panic:
     xor eax,   eax
     mov [rax], rsp
+
+
+; atoi 的提前检查
+; 只能根据返回 0 来判断失败！
+; （文本，长度）
+; 按照有符号解析，允许 '+' 和 '-' 前缀
+; 不检查空指针
+; 长度给负数的话，自动算，但是后果自负
+; 长度给 0 或者超出 INT64 范围算失败
+k1_chks_atoi_2611:
+
+    prbp
+
+    cmp byte [rcx], ('+')
+    je  .positive
+
+    cmp byte [rcx], ('-')
+    je  .negative
+
+    jmp .default
+
+.positive:
+
+    inc rcx
+    dec rdx
+
+.default:
+
+    test rdx, rdx
+    jz   .error
+    jns  .phavelen
+
+    push rcx
+    adod
+    shadow
+    call kp_strlen
+    pdod
+    pop  rcx
+    mov  rdx, rax
+
+.phavelen:
+
+    test rdx, rdx
+    jz   .error
+
+    cmp  rdx, 19
+    ja   .error
+    jne  .sp19
+    mov  r11, 19
+    mov  r8,  rcx
+    call .pt19
+
+db '9223372036854775807'
+
+.pt19:
+
+    pop r9
+    xor eax, eax
+
+.pt19lp:
+
+    mov al, [r8]
+    cmp al, [r9]
+
+    ja  .error
+    jb  .sp19
+    inc r8
+    inc r9
+
+    dec r11
+    jnz .pt19lp
+
+.sp19:
+
+    adod
+    shadow
+    call kp_chks_atou
+    pdod
+    test rax, rax
+    jz   .error
+
+    pdod
+    ret
+
+.negative:
+
+    inc rcx
+    dec rdx
+
+    test rdx, rdx
+    jz   .error
+    jns  .nhavelen
+
+    push rcx
+    adod
+    shadow
+    call kp_strlen
+    pdod
+    pop  rcx
+    mov  rdx, rax
+
+.nhavelen:
+
+    test rdx, rdx
+    jz   .error
+
+    cmp  rdx, 19
+    ja   .error
+    jne  .sn19
+    mov  r11, 19
+    mov  r8,  rcx
+    call .nt19
+
+db '9223372036854775808'
+
+.nt19:
+
+    pop r9
+    xor eax, eax
+
+.nt19lp:
+
+    mov al, [r8]
+    cmp al, [r9]
+
+    ja  .error
+    jb  .sn19
+    inc r8
+    inc r9
+
+    dec r11
+    jnz .nt19lp
+
+.sn19:
+
+    adod
+    shadow
+    call kp_chks_atou
+    pdod
+    test rax, rax
+    jz   .error
+
+    pdod
+    ret
+
+.error:
+
+    pdod
+    xor eax, eax
+    ret
