@@ -210,9 +210,65 @@ uc *ke_cpyval(const uc *src, ux bitmap, uc *dst, ux dstlen)
     }
     kp_movsb(src, a, dst, dstlen);
     dst[a] = 0;
-    return (uc *)((ux)src + a);
+    return (uc * )((ux)src + a);
 }
 
+// 子函数：找到键值后转换成无符号数字
+// （键值起始指针，长度）
+kp ke_vatou(const uc *src, ux srclen)
+{
+    if (kp_chks_atou(src, srclen) == 0)
+    {
+        return (kp){0, 0};
+    }
+    return (kp){1, kp_atou(src, srclen)};
+}
 
+// 子函数：找到键值后转换成有符号数字
+// （键值起始指针，长度）
+kp ke_vatoi(const uc *src, ux srclen)
+{
+    if (kp_chks_atoi(src, srclen) == 0)
+    {
+        return (kp){0, 0};
+    }
+    return (kp){1, (ux)kp_atoi(src, srclen)};
+}
+
+// 键值变成无符号数字
+// （缓冲区，段，标签，键名）
+// 注意返回的是kp结构体
+kp ke_atuval(rp zone, rp section, rp label, rp key)
+{
+    uc *a = ke_getval(zone, section, label, key);
+    if (a == 0)
+    {
+        return (kp){0, 0};
+    }
+    ux b = kp_strchr(0, a, (ux)-1, ']');
+    if (b == 0)
+    {
+        return (kp){0, 0};
+    }
+    return ke_vatou(a, b - 1);
+}
+
+// 键值变成有符号数字
+// （缓冲区，段，标签，键名）
+// 注意返回的是kp结构体
+kp ke_atival(rp zone, rp section, rp label, rp key)
+{
+    uc *a = ke_getval(zone, section, label, key);
+    if (a == 0)
+    {
+        return (kp){0, 0};
+    }
+    ux b = kp_strchr(0, a, (ux)-1, ']');
+    if (b == 0)
+    {
+        return (kp){0, 0};
+    }
+    return ke_vatoi(a, b - 1);
+}
 
 #endif

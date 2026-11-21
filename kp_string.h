@@ -25,6 +25,7 @@ ux kp_memcmp(rp src, ux srclen, rp dst, px bitmap);
 // 返回索引+1，零代表没有找到
 // 源长是负数就自动算，目标长必须填
 // （源，源长，目标，目标长）
+// 在 dst 里找 src ，基本等价于 strstr ( dst, src);
 ux kp_strstr(rp src, ux srclen, rp dst, ux dstlen);
 // 标量 movsb
 // 同时适用于 ermsb，不是 memmove

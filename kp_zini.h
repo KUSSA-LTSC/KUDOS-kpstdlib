@@ -42,4 +42,22 @@ uc *ke_getval(rp zone, rp section, rp label, rp key);
 // 成功返回指针，失败或空内容返回 0
 uc *ke_cpyval(const uc *src, ux bitmap, uc *dst, ux dstlen);
 
+// 子函数：找到键值后转换成无符号数字
+// （键值起始指针，长度）
+kp ke_vatou(const uc *src, ux srclen);
+
+// 子函数：找到键值后转换成有符号数字
+// （键值起始指针，长度）
+kp ke_vatoi(const uc *src, ux srclen);
+
+// 键值变成无符号数字
+// （缓冲区，段，标签，键名）
+// 注意返回的是kp结构体
+kp ke_atuval(rp zone, rp section, rp label, rp key);
+
+// 键值变成有符号数字
+// （缓冲区，段，标签，键名）
+// 注意返回的是kp结构体
+kp ke_atival(rp zone, rp section, rp label, rp key);
+
 #endif
